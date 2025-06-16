@@ -12,16 +12,15 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set Up Conda
+      - name: Set Up Conda Environment
         uses: conda-incubator/setup-miniconda@v2
         with:
           environment-file: environment-rpi.yaml
           activate-environment: uhd
+          auto-activate-base: false
           python-version: 3.11.13
 
-      - name: Run Tests in Conda Environment
+      - name: Install Pytest and Run Tests
         run: |
-          conda activate uhd
           conda install -y pytest
           pytest tests/
-        shell: bash -l
