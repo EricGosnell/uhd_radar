@@ -23,4 +23,4 @@ jobs:
       - name: Install Pytest and Run Tests
         run: |
           conda run -n uhd conda install -y pytest
-          conda run -n uhd pytest tests/
+          conda run -n uhd bash -c "PYTHONPATH=. pytest tests/"
