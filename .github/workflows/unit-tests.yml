@@ -19,10 +19,9 @@ jobs:
           activate-environment: uhd
           python-version: 3.11.13
 
-      - name: Install Pytest
+      - name: Run Tests in Conda Environment
         run: |
-          conda install pytest
-
-      - name: Run Pytest
-        run: |
+          conda activate uhd
+          conda install -y pytest
           pytest tests/
+        shell: bash -l
