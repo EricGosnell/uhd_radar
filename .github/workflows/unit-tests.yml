@@ -22,5 +22,5 @@ jobs:
 
       - name: Install Pytest and Run Tests
         run: |
-          conda install -y pytest
-          pytest tests/
+          conda run -n uhd conda install -y pytest
+          conda run -n uhd pytest tests/
