@@ -1,9 +1,11 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include "yaml-cpp/yaml.h"
+
 using namespace std;
 
-class sdr {
+class Sdr {
   public:
       // DEVICE
       string device_args;
@@ -36,5 +38,5 @@ class sdr {
       bool transmit;
 
   private:
-    void load_config_from_yaml(string yaml_filename);
+    void load_config_from_yaml(const string& kYamlFile);
 };
