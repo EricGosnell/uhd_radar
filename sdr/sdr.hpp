@@ -39,5 +39,5 @@ class Sdr {
     bool transmit;
 
   private:
-    void load_config_from_yaml(const string& kYamlFile);
+    void loadConfigFromYaml(const string& kYamlFile);
 };

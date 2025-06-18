@@ -9,7 +9,7 @@
 * @param kYamlFile Path to the YAML configuration file (config/)
 */
 Sdr::Sdr(const string& kYamlFile) {
-  load_config_from_yaml(kYamlFile);
+  loadConfigFromYaml(kYamlFile);
 }
 
 /**
@@ -21,7 +21,7 @@ Sdr::Sdr(const string& kYamlFile) {
 *
 * @param kYamlFile Path to the YAML configuration file (config/)
 */
-void Sdr::load_config_from_yaml(const string& kYamlFile) {
+void Sdr::loadConfigFromYaml(const string& kYamlFile) {
   YAML::Node config = YAML::LoadFile(kYamlFile);
 
   // Device
