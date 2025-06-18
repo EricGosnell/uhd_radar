@@ -1,7 +1,5 @@
 #include "chirp.hpp"
 
-YAML::Node chirp = config["CHIRP"];
-
 /**
  * @brief constructs a new Chirp object
  * 

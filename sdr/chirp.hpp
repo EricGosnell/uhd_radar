@@ -5,9 +5,9 @@ using namespace std;
 class Chirp{
 
 public:
-    Chirp(const string& kYamlFile)
+    Chirp(const string& kYamlFile);
 
-    double time_offset;
+    double time_offset; 
     double tx_duration;
     double rx_duration;
     double tr_on_lead;
@@ -20,5 +20,5 @@ public:
     bool phase_dither;
 
 private: 
-    void Chirp::assignVarFromYaml(const string& kYamlFile);
+    void assignVarFromYaml(const string& kYamlFile);
 };

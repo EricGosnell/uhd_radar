@@ -57,7 +57,7 @@ link_directories(${Boost_LIBRARY_DIRS})
 
 ### Make the executables #######################################################
 # Radar executable
-add_executable(radar main.cpp rf_settings.cpp rf_settings.hpp utils.cpp utils.hpp pseudorandom_phase.cpp pseudorandom_phase.hpp)
+add_executable(radar main.cpp rf_settings.cpp rf_settings.hpp utils.cpp utils.hpp pseudorandom_phase.cpp pseudorandom_phase.hpp chirp.hpp chirp.cpp)
 # Psuedorandom phase noise generation for post-processing
 add_executable(pseudorandom_phase_codes_to_file pseudorandom_phase_to_file.cpp pseudorandom_phase.cpp pseudorandom_phase.hpp)
 
