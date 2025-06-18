@@ -26,6 +26,7 @@
 #include "rf_settings.hpp"
 #include "pseudorandom_phase.hpp"
 #include "utils.hpp"
+#include "sdr.hpp"
 
 using namespace std;
 using namespace uhd;
@@ -33,7 +34,7 @@ using namespace uhd;
 /*
  * PROTOTYPES
  */
-void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream);
+void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream, Sdr& sdr);
 
 /*
  * SIG INT HANDLER
@@ -92,6 +93,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   }
   cout << "Reading from config file: " << yaml_filename << endl;
 
+  Sdr sdr(yaml_filename);
+
   YAML::Node config = YAML::LoadFile(yaml_filename);
 
   YAML::Node rf0 = config["RF0"];
@@ -117,8 +120,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   // Calculated parameters
   tr_off_delay = tx_duration + tr_off_trail; // Time before turning off GPIO
-  num_tx_samps = tx_rate * tx_duration; // Total samples to transmit per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
-  num_rx_samps = rx_rate * rx_duration; // Total samples to receive per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
+  num_tx_samps = sdr.tx_rate * tx_duration; // Total samples to transmit per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
+  num_rx_samps = sdr.rx_rate * rx_duration; // Total samples to receive per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
 
 
   /** Thread, interrupt setup **/
@@ -142,13 +145,13 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   /*** SANITY CHECKS ***/
   
-  if (tx_rate != rx_rate){
+  if (sdr.tx_rate != sdr.rx_rate){
     cout << "WARNING: TX sample rate does not match RX sample rate.\n";
   }
-  if (config["GENERATE"]["sample_rate"].as<double>() != tx_rate){
+  if (config["GENERATE"]["sample_rate"].as<double>() != sdr.tx_rate){
     cout << "WARNING: TX sample rate does not match sample rate of generated chirp.\n";
   }
-  if (bw < config["GENERATE"]["chirp_bandwidth"].as<double>() && bw != 0){
+  if (sdr.bw < config["GENERATE"]["chirp_bandwidth"].as<double>() && sdr.bw != 0){
     cout << "WARNING: RX bandwidth is narrower than the chirp bandwidth.\n";
   }
   if (config["GENERATE"]["chirp_length"].as<double>() > tx_duration){
@@ -163,15 +166,15 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   // create a usrp device
   cout << endl;
   cout << boost::format("Creating the usrp device with: %s...")
-    % device_args << endl;
-  usrp::multi_usrp::sptr usrp = uhd::usrp::multi_usrp::make(device_args);
+    % sdr.device_args << endl;
+  usrp::multi_usrp::sptr usrp = uhd::usrp::multi_usrp::make(sdr.device_args);
   cout << boost::format("TX/RX Device: %s") % usrp->get_pp_string() << endl;
   
   // Lock mboard clocks
-  usrp->set_clock_source(clk_ref);
-  usrp->set_time_source(clk_ref);
+  usrp->set_clock_source(sdr.clk_ref);
+  usrp->set_time_source(sdr.clk_ref);
 
-  if (clk_ref == "gpsdo") {
+  if (sdr.clk_ref == "gpsdo") {
     // Check for 10 MHz lock
     vector<string> sensor_names = usrp->get_mboard_sensor_names(0);
     if (find(sensor_names.begin(), sensor_names.end(), "ref_locked")
@@ -254,18 +257,18 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   // always select the subdevice first, the channel mapping affects the
   // other settings
-  if (transmit) {
-    usrp->set_tx_subdev_spec(subdev);
+  if (sdr.transmit) {
+    usrp->set_tx_subdev_spec(sdr.subdev);
   }
-  usrp->set_rx_subdev_spec(subdev);
+  usrp->set_rx_subdev_spec(sdr.subdev);
 
   // set master clock rate
-  usrp->set_master_clock_rate(clk_rate);
+  usrp->set_master_clock_rate(sdr.clk_rate);
 
   // detect which channels to use
   vector<string> tx_channel_strings;
   vector<size_t> tx_channel_nums;
-  boost::split(tx_channel_strings, tx_channels, boost::is_any_of("\"',"));
+  boost::split(tx_channel_strings, sdr.tx_channels, boost::is_any_of("\"',"));
   for (size_t ch = 0; ch < tx_channel_strings.size(); ch++) {
     size_t chan = stoi(tx_channel_strings[ch]);
     if (chan >= usrp->get_tx_num_channels()) {
@@ -275,7 +278,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   }
   vector<string> rx_channel_strings;
   vector<size_t> rx_channel_nums;
-  boost::split(rx_channel_strings, rx_channels, boost::is_any_of("\"',"));
+  boost::split(rx_channel_strings, sdr.rx_channels, boost::is_any_of("\"',"));
   for (size_t ch = 0; ch < rx_channel_strings.size(); ch++) {
     size_t chan = stoi(rx_channel_strings[ch]);
     if (chan >= usrp->get_rx_num_channels()) {
@@ -288,7 +291,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   if (tx_channel_nums.size() == 1) {
     set_rf_params_single(usrp, rf0, rx_channel_nums, tx_channel_nums);
   } else if (tx_channel_nums.size() == 2) {
-    if (!transmit) {
+    if (!sdr.transmit) {
       throw std::runtime_error("Non-transmit mode not supported by set_rf_params_multi");
     }
     set_rf_params_multi(usrp, rf0, rf1, rx_channel_nums, tx_channel_nums);
@@ -304,7 +307,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   // Check Ref and LO Lock detect
   vector<std::string> tx_sensor_names, rx_sensor_names;
-  if (transmit) {
+  if (sdr.transmit) {
     for (size_t ch = 0; ch < tx_channel_nums.size(); ch++) {
       // Check LO locked
       tx_sensor_names = usrp->get_tx_sensor_names(ch);
@@ -338,23 +341,23 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   }
 
   // basic ATR setup
-  if (pwr_amp_pin != -1) {
-    usrp->set_gpio_attr(gpio_bank, "CTRL", ATR_CONTROL, ATR_MASKS);
-    usrp->set_gpio_attr(gpio_bank, "DDR", GPIO_DDR, ATR_MASKS);
+  if (sdr.pwr_amp_pin != -1) {
+    usrp->set_gpio_attr(sdr.gpio_bank, "CTRL", sdr.ATR_CONTROL, sdr.ATR_MASKS);
+    usrp->set_gpio_attr(sdr.gpio_bank, "DDR", sdr.GPIO_DDR, sdr.ATR_MASKS);
 
     // set amp output pin as desired (on only when TX)
-    usrp->set_gpio_attr(gpio_bank, "ATR_0X", 0, AMP_GPIO_MASK);
-    usrp->set_gpio_attr(gpio_bank, "ATR_RX", 0, AMP_GPIO_MASK);
-    usrp->set_gpio_attr(gpio_bank, "ATR_TX", 0, AMP_GPIO_MASK);
-    usrp->set_gpio_attr(gpio_bank, "ATR_XX", AMP_GPIO_MASK, AMP_GPIO_MASK);
+    usrp->set_gpio_attr(sdr.gpio_bank, "ATR_0X", 0, sdr.AMP_GPIO_MASK);
+    usrp->set_gpio_attr(sdr.gpio_bank, "ATR_RX", 0, sdr.AMP_GPIO_MASK);
+    usrp->set_gpio_attr(sdr.gpio_bank, "ATR_TX", 0, sdr.AMP_GPIO_MASK);
+    usrp->set_gpio_attr(sdr.gpio_bank, "ATR_XX", sdr.AMP_GPIO_MASK, sdr.AMP_GPIO_MASK);
   }
 
-  //cout << "AMP_GPIO_MASK: " << bitset<32>(AMP_GPIO_MASK) << endl;
+  //cout << "sdr.AMP_GPIO_MASK: " << bitset<32>(sdr.AMP_GPIO_MASK) << endl;
 
   // turns external ref out port on or off
-   if (ref_out_int == 1) {
+   if (sdr.ref_out_int == 1) {
     usrp->set_clock_source_out(true);
-  } else if (ref_out_int == 0) {
+  } else if (sdr.ref_out_int == 0) {
     usrp->set_clock_source_out(false);
   } // else do nothing (SDR likely doesn't support this parameter)
   
@@ -364,19 +367,19 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   /*** TX SETUP ***/
 
   // Stream formats
-  stream_args_t tx_stream_args(cpu_format, otw_format);
+  stream_args_t tx_stream_args(sdr.cpu_format, sdr.otw_format);
   tx_stream_args.channels = tx_channel_nums;
 
   // tx streamer
   tx_streamer::sptr tx_stream;
-  if (transmit) {
+  if (sdr.transmit) {
     tx_stream = usrp->get_tx_stream(tx_stream_args);
     cout << "INFO: tx_stream get_max_num_samps: " << tx_stream->get_max_num_samps() << endl;
   }
 
   /*** RX SETUP ***/
 
-  stream_args_t rx_stream_args(cpu_format, otw_format);
+  stream_args_t rx_stream_args(sdr.cpu_format, sdr.otw_format);
 
   // rx streamer
   rx_stream_args.channels = rx_channel_nums;
@@ -386,9 +389,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   /*** SPAWN THE TX THREAD ***/
   boost::thread_group transmit_thread;
-  transmit_thread.create_thread(boost::bind(&transmit_worker, tx_stream, rx_stream));
+  transmit_thread.create_thread(
+      boost::bind(&transmit_worker, tx_stream, rx_stream, boost::ref(sdr))
+  );
   
-  if (!transmit) {
+  if (!sdr.transmit) {
     cout << "WARNING: Transmit disabled by configuration file!" << endl;
   }
 
@@ -440,7 +445,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   string gps_data;
 
-  if (cpu_format != "fc32") {
+  if (sdr.cpu_format != "fc32") {
     cout << "Only cpu_format 'fc32' is supported for now." << endl;
     // This is because we actually need buff and sample_sum to have the correct
     // data type to facilitate phase modulation and summing. In the future, this could be
@@ -450,7 +455,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   }
 
   // receive buffer
-  size_t bytes_per_sample = convert::get_bytes_per_item(cpu_format);
+  size_t bytes_per_sample = convert::get_bytes_per_item(sdr.cpu_format);
   vector<complex<float>> sample_sum(num_rx_samps, 0); // Sum error-free RX pulses into this vector
 
   vector<complex<float>> buff(num_rx_samps); // Buffer sized for one pulse at a time
@@ -529,7 +534,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     }
 
     // get gps data
-    /*if (clk_ref == "gpsdo" && ((pulses_received % 100000) == 0)) {
+    /*if (sdr.clk_ref == "gpsdo" && ((pulses_received % 100000) == 0)) {
       gps_data = usrp->get_mboard_sensor("gps_gprmc").to_pp_string();
       //cout << gps_data << endl;
     }*/
@@ -543,7 +548,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     }
 
     // write gps string to file
-    /*if (clk_ref == "gpsdo") {
+    /*if (sdr.clk_ref == "gpsdo") {
       boost::asio::async_write(gps_stream, boost::asio::buffer(gps_data + "\n"), gps_asio_handler);
     }*/
 
@@ -593,7 +598,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 /*
  * TRANSMIT_WORKER
  */
-void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream)
+void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream, Sdr& sdr)
 {
   set_thread_priority_safe(1.0, true);
 
@@ -612,7 +617,7 @@ void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream)
 
   // Transmit buffers
 
-  if (cpu_format != "fc32") {
+  if (sdr.cpu_format != "fc32") {
     cout << "Only cpu_format 'fc32' is supported for now." << endl;
     // This is because we actually need chirp_unmodulated to have the correct
     // data type to facilitate phase modulation. In the future, this could be
@@ -624,7 +629,7 @@ void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream)
   vector<std::complex<float>> tx_buff(num_tx_samps); // Ready-to-transmit samples
   vector<std::complex<float>> chirp_unmodulated(num_tx_samps); // Chirp samples before any phase modulation
 
-  infile.read((char *)&chirp_unmodulated.front(), num_tx_samps * convert::get_bytes_per_item(cpu_format));
+  infile.read((char *)&chirp_unmodulated.front(), num_tx_samps * convert::get_bytes_per_item(sdr.cpu_format));
   tx_buff = chirp_unmodulated;
 
   // Transmit metadata structure
@@ -683,7 +688,7 @@ void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream)
     rx_time = time_offset + (pulse_rep_int * pulses_scheduled); // TODO: How do we track timing
     tx_md.time_spec = time_spec_t(rx_time - tx_lead);
     
-    if (transmit) {
+    if (sdr.transmit) {
       n_samp_tx = tx_stream->send(&tx_buff.front(), num_tx_samps, tx_md, 60); // TODO: Think about timeout
     }
 
