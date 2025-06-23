@@ -10,7 +10,7 @@ All unit test functions must start with test_ and be in a file named test_*.py w
 def test_chirp_length():
     """ Tests the length of the chirp without zero-padding in default.yaml (20e-6 seconds) """
     # Load config file
-    yaml_filename = Path(__file__).resolve().parent.parent/"config"/"default.yaml"
+    yaml_filename = Path(__file__).resolve().parent.parent.parent/"config"/"default.yaml"
     yaml = YAML(typ='safe')
     stream = open(yaml_filename)
     config = yaml.load(stream)
