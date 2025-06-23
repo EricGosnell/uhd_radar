@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  auto-testing:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,7 +20,18 @@ jobs:
           auto-activate-base: false
           python-version: 3.11.13
 
-      - name: Install Pytest and Run Tests
+      - name: Install Dependencies
         run: |
           conda run -n uhd conda install -y pytest
-          conda run -n uhd bash -c "PYTHONPATH=. pytest tests/"
+          sudo apt-get update && sudo apt-get install -y cmake g++ libboost-all-dev
+
+      - name: Build C++ Tests
+        run: |
+          cmake -S sdr -B build
+          cmake --build build
+
+      - name: Run Python Tests
+        run: conda run -n uhd bash -c "PYTHONPATH=. pytest tests/"
+
+      - name: Run C++ Tests
+        run: ctest --test-dir build --output-on-failure --extra-verbose
