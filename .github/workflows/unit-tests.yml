@@ -19,10 +19,19 @@ jobs:
           activate-environment: uhd
           auto-activate-base: false
           python-version: 3.11.13
+          use-only-tar-bz2: true
+
+      - name: Cache Conda Environment
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/miniconda3/envs/uhd
+          key: conda-env-full-${{ runner.os }}-${{ hashFiles('environment-rpi.yaml') }}-pytest
+          restore-keys: |
+            conda-env-full-${{ runner.os }}-
 
       - name: Install Dependencies
         run: |
-          conda run -n uhd conda install -y pytest
+          conda run -n uhd python -c "import pytest" || conda run -n uhd conda install -y pytest
           sudo apt-get update && sudo apt-get install -y cmake g++ libboost-all-dev libuhd-dev uhd-host
 
       - name: Build and Install yaml-cpp
