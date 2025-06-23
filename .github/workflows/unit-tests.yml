@@ -27,7 +27,7 @@ jobs:
 
       - name: Build C++ Tests
         run: |
-          cmake -S sdr -B build
+          cmake -S sdr -B build -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
           cmake --build build
 
       - name: Run Python Tests
