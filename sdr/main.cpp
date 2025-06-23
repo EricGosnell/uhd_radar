@@ -26,6 +26,7 @@
 #include "rf_settings.hpp"
 #include "pseudorandom_phase.hpp"
 #include "utils.hpp"
+#include "chirp.hpp"
 
 using namespace std;
 using namespace uhd;
@@ -33,7 +34,7 @@ using namespace uhd;
 /*
  * PROTOTYPES
  */
-void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream);
+void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream, Chirp& chirp);
 
 /*
  * SIG INT HANDLER
@@ -75,19 +76,6 @@ string tx_ant;
 string rx_ant;
 bool transmit;
 
-// CHIRP
-double time_offset;
-double tx_duration;
-double rx_duration;
-double tr_on_lead;
-double tr_off_trail;
-double pulse_rep_int;
-double tx_lead;
-int num_pulses;
-int num_presums;
-int max_chirps_per_file;
-bool phase_dither;
-
 // FILENAMES
 string chirp_loc;
 string save_loc;
@@ -122,6 +110,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   }
   cout << "Reading from config file: " << yaml_filename << endl;
 
+  Chirp chirp(yaml_filename);
   YAML::Node config = YAML::LoadFile(yaml_filename);
 
   YAML::Node dev_params = config["DEVICE"];
@@ -160,28 +149,16 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   transmit = rf0["transmit"].as<bool>(true); // True if transmission enabled
 
-  YAML::Node chirp = config["CHIRP"];
-  time_offset = chirp["time_offset"].as<double>();
-  tx_duration = chirp["tx_duration"].as<double>();
-  rx_duration = chirp["rx_duration"].as<double>();
-  tr_on_lead = chirp["tr_on_lead"].as<double>();
-  tr_off_trail = chirp["tr_off_trail"].as<double>();
-  pulse_rep_int = chirp["pulse_rep_int"].as<double>();
-  tx_lead = chirp["tx_lead"].as<double>();
-  num_pulses = chirp["num_pulses"].as<int>();
-  num_presums = chirp["num_presums"].as<int>(1); // Default of 1 is equivalent to no pre-summing
-  phase_dither = chirp["phase_dithering"].as<bool>(false);
-
   YAML::Node files = config["FILES"];
   chirp_loc = files["chirp_loc"].as<string>();
   save_loc = files["save_loc"].as<string>();
   gps_save_loc = files["gps_loc"].as<string>();
-  max_chirps_per_file = files["max_chirps_per_file"].as<int>();
+  chirp.max_chirps_per_file = files["max_chirps_per_file"].as<int>();
 
   // Calculated parameters
-  tr_off_delay = tx_duration + tr_off_trail; // Time before turning off GPIO
-  num_tx_samps = tx_rate * tx_duration; // Total samples to transmit per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
-  num_rx_samps = rx_rate * rx_duration; // Total samples to receive per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
+  tr_off_delay = chirp.tx_duration + chirp.tr_off_trail; // Time before turning off GPIO
+  num_tx_samps = tx_rate * chirp.tx_duration; // Total samples to transmit per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
+  num_rx_samps = rx_rate * chirp.rx_duration; // Total samples to receive per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
 
 
   /** Thread, interrupt setup **/
@@ -214,10 +191,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   if (bw < config["GENERATE"]["chirp_bandwidth"].as<double>() && bw != 0){
     cout << "WARNING: RX bandwidth is narrower than the chirp bandwidth.\n";
   }
-  if (config["GENERATE"]["chirp_length"].as<double>() > tx_duration){
+  if (config["GENERATE"]["chirp_length"].as<double>() > chirp.tx_duration){
     cout << "WARNING: TX duration is shorter than chirp duration.\n";
   }
-  if (config["CHIRP"]["rx_duration"].as<double>() < tx_duration) {
+  if (config["CHIRP"]["rx_duration"].as<double>() < chirp.tx_duration) {
     cout << "WARNING: RX duration is shorter than TX duration.\n";
   }
   
@@ -422,7 +399,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   } // else do nothing (SDR likely doesn't support this parameter)
   
   // update the offset time for start of streaming to be offset from the current usrp time
-  time_offset = time_offset + time_spec_t(usrp->get_time_now()).get_real_secs();
+  chirp.time_offset = chirp.time_offset + time_spec_t(usrp->get_time_now()).get_real_secs();
 
   /*** TX SETUP ***/
 
@@ -449,7 +426,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   /*** SPAWN THE TX THREAD ***/
   boost::thread_group transmit_thread;
-  transmit_thread.create_thread(boost::bind(&transmit_worker, tx_stream, rx_stream));
+  transmit_thread.create_thread(boost::bind(&transmit_worker, tx_stream, rx_stream, boost::ref(chirp)));
   
   if (!transmit) {
     cout << "WARNING: Transmit disabled by configuration file!" << endl;
@@ -487,7 +464,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   ofstream outfile;
   int save_file_index = 0;
   string current_filename = save_loc;
-  if (max_chirps_per_file > 0) {
+  if (chirp.max_chirps_per_file > 0) {
     // Breaking into multiple files is enabled
     current_filename = current_filename + "." + to_string(save_file_index);
   }
@@ -497,7 +474,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   outfile.open(current_filename, ofstream::binary);
 
   /*** RX LOOP AND SUM ***/
-  if (num_pulses < 0) {
+  if (chirp.num_pulses < 0) {
     cout << "num_pulses is < 0. Will continue to send chirps until stopped with Ctrl-C." << endl;
   }
 
@@ -529,11 +506,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
   cout << "[START] Beginning main loop" << endl;
 
-  while ((num_pulses < 0) || (last_pulse_num_written < num_pulses)) {
+  while ((chirp.num_pulses < 0) || (last_pulse_num_written < chirp.num_pulses)) {
 
     n_samps_in_rx_buff = rx_stream->recv(buffs, num_rx_samps, rx_md, 60.0, false); // TODO: Think about timeout
 
-    if (phase_dither) {
+    if (chirp.phase_dither) {
       inversion_phase = -1.0 * get_next_phase(false); // Get next phase from the generator each time to keep in sequence with TX
     }
 
@@ -562,12 +539,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     } else {
       pulses_received++;
 
-      if (phase_dither) {
+      if (chirp.phase_dither) {
         // Undo phase modulation and divide by num_presums in one go
-        transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), polar((float) 1.0/num_presums, inversion_phase)));
-      } else if (num_presums != 1) {
+        transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), polar((float) 1.0/chirp.num_presums, inversion_phase)));
+      } else if (chirp.num_presums != 1) {
         // Only divide by num_presums
-        transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), 1.0/num_presums));
+        transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), 1.0/chirp.num_presums));
       }
 
       // Add to sample_sum
@@ -575,7 +552,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     }
 
     // Check if we have a full sample_sum ready to write to file
-    if (((pulses_received - error_count) > last_pulse_num_written) && ((pulses_received - error_count) % num_presums == 0)) {
+    if (((pulses_received - error_count) > last_pulse_num_written) && ((pulses_received - error_count) % chirp.num_presums == 0)) {
       // As each sample is added, it has phase inversion applied and is divided by # presums, so no additional work to do here.
       // write RX data to file
       if (outfile.is_open()) {
@@ -610,7 +587,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
       boost::asio::async_write(gps_stream, boost::asio::buffer(gps_data + "\n"), gps_asio_handler);
     }*/
 
-    if ( (max_chirps_per_file > 0) && (int(last_pulse_num_written / max_chirps_per_file) > save_file_index)) {
+    if ( (chirp.max_chirps_per_file > 0) && (int(last_pulse_num_written / chirp.max_chirps_per_file) > save_file_index)) {
       outfile.close();
       // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
       cout_mutex.lock();
@@ -656,7 +633,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 /*
  * TRANSMIT_WORKER
  */
-void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream)
+void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream, Chirp& chirp)
 {
   set_thread_priority_safe(1.0, true);
 
@@ -708,10 +685,10 @@ void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream)
   long int last_error_count = 0;
   double error_delay = 0;
 
-  while ((num_pulses < 0) || ((pulses_scheduled - error_count) < num_pulses))
+  while ((chirp.num_pulses < 0) || ((pulses_scheduled - error_count) < chirp.num_pulses))
   {
     // Setup next chirp for modulation
-    if (phase_dither) {
+    if (chirp.phase_dither) {
       transform(chirp_unmodulated.begin(), chirp_unmodulated.end(), tx_buff.begin(), std::bind1st(std::multiplies<complex<float>>(), polar((float) 1.0, get_next_phase(true))));
     }
 
@@ -735,16 +712,16 @@ void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream)
     }
 
     if (error_count > last_error_count) {
-      error_delay = (error_count - last_error_count) * 2 * pulse_rep_int;
-      time_offset += error_delay;
+      error_delay = (error_count - last_error_count) * 2 * chirp.pulse_rep_int;
+      chirp.time_offset += error_delay;
       cout_mutex.lock();
       cout << "[TX] (Chirp " << pulses_scheduled << ") time_offset increased by " << error_delay << endl;
       cout_mutex.unlock();
       last_error_count = error_count;
     }
     // TX
-    rx_time = time_offset + (pulse_rep_int * pulses_scheduled); // TODO: How do we track timing
-    tx_md.time_spec = time_spec_t(rx_time - tx_lead);
+    rx_time = chirp.time_offset + (chirp.pulse_rep_int * pulses_scheduled); // TODO: How do we track timing
+    tx_md.time_spec = time_spec_t(rx_time - chirp.tx_lead);
     
     if (transmit) {
       n_samp_tx = tx_stream->send(&tx_buff.front(), num_tx_samps, tx_md, 60); // TODO: Think about timeout
