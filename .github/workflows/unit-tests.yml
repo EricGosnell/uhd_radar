@@ -19,7 +19,6 @@ jobs:
           activate-environment: uhd
           auto-activate-base: false
           python-version: 3.11.13
-          use-only-tar-bz2: true
 
       - name: Cache Conda Environment
         uses: actions/cache@v3
