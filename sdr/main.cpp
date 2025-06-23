@@ -97,8 +97,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   YAML::Node config = YAML::LoadFile(yaml_filename);
 
-  YAML::Node rf0 = config["RF0"];
-  YAML::Node rf1 = config["RF1"];
+  //YAML::Node rf0 = config["RF0"];
+ // YAML::Node rf1 = config["RF1"];
 
   YAML::Node chirp = config["CHIRP"];
   time_offset = chirp["time_offset"].as<double>();
@@ -161,143 +161,18 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     cout << "WARNING: RX duration is shorter than TX duration.\n";
   }
   
-//USRP Setup
-  // always select the subdevice first, the channel mapping affects the
-  // other settings
-  if (sdr.transmit) {
-  sdr.usrp->set_tx_subdev_spec(sdr.subdev);
-  }
-  sdr.usrp->set_rx_subdev_spec(sdr.subdev);
+  cout << "INFO: Number of TX samples: " << num_tx_samps << endl;  //needs to be after chirp and sdr object are both made
+  cout << "INFO: Number of RX samples: " << num_rx_samps << endl << endl;  //needs to be after chirp and sdr object are both made
 
-  // set master clock rate
-  sdr.usrp->set_master_clock_rate(sdr.clk_rate);
-
-  // detect which channels to use
-  vector<string> tx_channel_strings;
-  vector<size_t> tx_channel_nums;
-  boost::split(tx_channel_strings, sdr.tx_channels, boost::is_any_of("\"',"));
-  for (size_t ch = 0; ch < tx_channel_strings.size(); ch++) {
-    size_t chan = stoi(tx_channel_strings[ch]);
-    if (chan >= sdr.usrp->get_tx_num_channels()) {
-      throw std::runtime_error("Invalid TX channel(s) specified.");
-    } else
-      tx_channel_nums.push_back(stoi(tx_channel_strings[ch]));
-  }
-  vector<string> rx_channel_strings;
-  vector<size_t> rx_channel_nums;
-  boost::split(rx_channel_strings, sdr.rx_channels, boost::is_any_of("\"',"));
-  for (size_t ch = 0; ch < rx_channel_strings.size(); ch++) {
-    size_t chan = stoi(rx_channel_strings[ch]);
-    if (chan >= sdr.usrp->get_rx_num_channels()) {
-      throw std::runtime_error("Invalid RX channel(s) specified.");
-    } else
-      rx_channel_nums.push_back(stoi(rx_channel_strings[ch]));
-  }
-
-  // set the RF parameters based on 1 or 2 channel operation
-  if (tx_channel_nums.size() == 1) {
-    set_rf_params_single(sdr.usrp, rf0, rx_channel_nums, tx_channel_nums);
-  } else if (tx_channel_nums.size() == 2) {
-    if (!sdr.transmit) {
-      throw std::runtime_error("Non-transmit mode not supported by set_rf_params_multi");
-    }
-    set_rf_params_multi(sdr.usrp, rf0, rf1, rx_channel_nums, tx_channel_nums);
-  } else {
-    throw std::runtime_error("Number of channels requested not supported");
-  }
-
-  // allow for some setup time
-  this_thread::sleep_for(chrono::seconds(1));
-    
-  cout << "INFO: Number of TX samples: " << num_tx_samps << endl;
-  cout << "INFO: Number of RX samples: " << num_rx_samps << endl << endl;
-
-  // Check Ref and LO Lock detect
-  vector<std::string> tx_sensor_names, rx_sensor_names;
-  if (sdr.transmit) {
-    for (size_t ch = 0; ch < tx_channel_nums.size(); ch++) {
-      // Check LO locked
-      tx_sensor_names = sdr.usrp->get_tx_sensor_names(ch);
-      if (find(tx_sensor_names.begin(), tx_sensor_names.end(), "lo_locked") != tx_sensor_names.end())
-      {
-        sensor_value_t lo_locked = sdr.usrp->get_tx_sensor("lo_locked", ch);
-        cout << boost::format("Checking TX: %s ...") % lo_locked.to_pp_string()
-            << endl;
-        UHD_ASSERT_THROW(lo_locked.to_bool());
-      }
-    }
-  }
-
-  for (size_t ch = 0; ch < rx_channel_nums.size(); ch++) {
-    // Check LO locked
-    rx_sensor_names = sdr.usrp->get_rx_sensor_names(ch);
-    if (find(rx_sensor_names.begin(), rx_sensor_names.end(), "lo_locked") != rx_sensor_names.end())
-    {
-      sensor_value_t lo_locked = sdr.usrp->get_rx_sensor("lo_locked", ch);
-      cout << boost::format("Checking RX: %s ...") % lo_locked.to_pp_string()
-           << endl;
-      UHD_ASSERT_THROW(lo_locked.to_bool());
-    }
-  }
-
-  /*** SETUP GPIO ***/
-  cout << "Available GPIO banks: " << std::endl;
-  auto banks = sdr.usrp->get_gpio_banks(0);
-  for (auto& bank : banks) {
-      cout << "* " << bank << std::endl;
-  }
-
-  // basic ATR setup
-  if (sdr.pwr_amp_pin != -1) {
-    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "CTRL", sdr.ATR_CONTROL, sdr.ATR_MASKS);
-    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "DDR", sdr.GPIO_DDR, sdr.ATR_MASKS);
-
-    // set amp output pin as desired (on only when TX)
-    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "ATR_0X", 0, sdr.AMP_GPIO_MASK);
-    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "ATR_RX", 0, sdr.AMP_GPIO_MASK);
-    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "ATR_TX", 0, sdr.AMP_GPIO_MASK);
-    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "ATR_XX", sdr.AMP_GPIO_MASK, sdr.AMP_GPIO_MASK);
-  }
-
-  //cout << "sdr.AMP_GPIO_MASK: " << bitset<32>(sdr.AMP_GPIO_MASK) << endl;
-
-  // turns external ref out port on or off
-   if (sdr.ref_out_int == 1) {
-    sdr.usrp->set_clock_source_out(true);
-  } else if (sdr.ref_out_int == 0) {
-    sdr.usrp->set_clock_source_out(false);
-  } // else do nothing (SDR likely doesn't support this parameter)
-  
+ 
   // update the offset time for start of streaming to be offset from the current usrp time
-  time_offset = time_offset + time_spec_t(sdr.usrp->get_time_now()).get_real_secs();
-
-  /*** TX SETUP ***/
-
-  // Stream formats
-  stream_args_t tx_stream_args(sdr.cpu_format, sdr.otw_format);
-  tx_stream_args.channels = tx_channel_nums;
-
-  // tx streamer
-  tx_streamer::sptr tx_stream;
-  if (sdr.transmit) {
-    tx_stream = sdr.usrp->get_tx_stream(tx_stream_args);
-    cout << "INFO: tx_stream get_max_num_samps: " << tx_stream->get_max_num_samps() << endl;
-  }
-
-  /*** RX SETUP ***/
-
-  stream_args_t rx_stream_args(sdr.cpu_format, sdr.otw_format);
-
-  // rx streamer
-  rx_stream_args.channels = rx_channel_nums;
-  rx_streamer::sptr rx_stream = sdr.usrp->get_rx_stream(rx_stream_args);
-
-  cout << "INFO: rx_stream get_max_num_samps: " << rx_stream->get_max_num_samps() << endl;
+  time_offset = time_offset + time_spec_t(sdr.usrp->get_time_now()).get_real_secs(); //needs to be after chirp and sdr object are both made
+  
 
   /*** SPAWN THE TX THREAD ***/
   boost::thread_group transmit_thread;
   transmit_thread.create_thread(
-      boost::bind(&transmit_worker, tx_stream, rx_stream, boost::ref(sdr))
+      boost::bind(&transmit_worker, sdr.tx_stream, sdr.rx_stream, boost::ref(sdr))
   );
   
   if (!sdr.transmit) {
@@ -367,7 +242,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   vector<complex<float>> buff(num_rx_samps); // Buffer sized for one pulse at a time
   vector<void *> buffs;
-  for (size_t ch = 0; ch < rx_stream->get_num_channels(); ch++) {
+  for (size_t ch = 0; ch < sdr.rx_stream->get_num_channels(); ch++) {
     buffs.push_back(&buff.front()); // TODO: I don't think this actually works for num_channels > 1
   }
   size_t n_samps_in_rx_buff;
@@ -380,7 +255,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   while ((num_pulses < 0) || (last_pulse_num_written < num_pulses)) {
 
-    n_samps_in_rx_buff = rx_stream->recv(buffs, num_rx_samps, rx_md, 60.0, false); // TODO: Think about timeout
+    n_samps_in_rx_buff = sdr.rx_stream->recv(buffs, num_rx_samps, rx_md, 60.0, false); // TODO: Think about timeout
 
     if (phase_dither) {
       inversion_phase = -1.0 * get_next_phase(false); // Get next phase from the generator each time to keep in sequence with TX

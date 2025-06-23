@@ -52,8 +52,8 @@ void Sdr::loadConfigFromYaml(const string& kYamlFile) {
   ref_out_int = gpio_params["ref_out"].as<int>();
 
   // RF
-  YAML::Node rf0 = config["RF0"];
-  YAML::Node rf1 = config["RF1"];
+  rf0 = config["RF0"];
+  rf1 = config["RF1"];
   rx_rate = rf1["rx_rate"].as<double>();
   tx_rate = rf1["tx_rate"].as<double>();
   freq = rf1["freq"].as<double>();
@@ -88,8 +88,21 @@ void Sdr::setupUsrp(){
     usrp->set_time_next_pps(time_spec_t(0.0));
     this_thread::sleep_for((chrono::milliseconds(1000)));
   }
+  // always select the subdevice first, the channel mapping affects the
+  // other settings
+  if (transmit) {
+  usrp->set_tx_subdev_spec(subdev);
+  }
+  usrp->set_rx_subdev_spec(subdev);
 
-
+  // set master clock rate
+  usrp->set_master_clock_rate(clk_rate);
+  detectChannels();
+  setRFParams();
+  refLoLockDetect();
+  setupGpio();
+  setupTx();
+  setupRx();
 }
 
 
@@ -171,4 +184,124 @@ void Sdr::checkTime(time_spec_t& gps_time){
                   << "ERROR: Failed to synchronize USRP time to GPS time"
                   << endl
                   << endl;
+}
+
+
+void Sdr::detectChannels(){
+  boost::split(tx_channel_strings, tx_channels, boost::is_any_of("\"',"));
+  for (size_t ch = 0; ch < tx_channel_strings.size(); ch++) {
+    size_t chan = stoi(tx_channel_strings[ch]);
+    if (chan >= usrp->get_tx_num_channels()) {
+      throw std::runtime_error("Invalid TX channel(s) specified.");
+    } else
+      tx_channel_nums.push_back(stoi(tx_channel_strings[ch]));
+  }
+  boost::split(rx_channel_strings, rx_channels, boost::is_any_of("\"',"));
+  for (size_t ch = 0; ch < rx_channel_strings.size(); ch++) {
+    size_t chan = stoi(rx_channel_strings[ch]);
+    if (chan >= usrp->get_rx_num_channels()) {
+      throw std::runtime_error("Invalid RX channel(s) specified.");
+    } else
+      rx_channel_nums.push_back(stoi(rx_channel_strings[ch]));
+  }
+}
+
+void Sdr::setRFParams(){
+ // set the RF parameters based on 1 or 2 channel operation
+  if (tx_channel_nums.size() == 1) {
+    set_rf_params_single(usrp, rf0, rx_channel_nums, tx_channel_nums);
+  } else if (tx_channel_nums.size() == 2) {
+    if (!transmit) {
+      throw std::runtime_error("Non-transmit mode not supported by set_rf_params_multi");
+    }
+    set_rf_params_multi(usrp, rf0, rf1, rx_channel_nums, tx_channel_nums);
+  } else {
+    throw std::runtime_error("Number of channels requested not supported");
+  }
+
+  // allow for some setup time
+  this_thread::sleep_for(chrono::seconds(1));
+}
+
+void Sdr::refLoLockDetect(){
+ // Check Ref and LO Lock detect
+  vector<std::string> tx_sensor_names, rx_sensor_names;
+  if (transmit) {
+    for (size_t ch = 0; ch < tx_channel_nums.size(); ch++) {
+      // Check LO locked
+      tx_sensor_names = usrp->get_tx_sensor_names(ch);
+      if (find(tx_sensor_names.begin(), tx_sensor_names.end(), "lo_locked") != tx_sensor_names.end())
+      {
+        sensor_value_t lo_locked = usrp->get_tx_sensor("lo_locked", ch);
+        cout << boost::format("Checking TX: %s ...") % lo_locked.to_pp_string()
+            << endl;
+        UHD_ASSERT_THROW(lo_locked.to_bool());
+      }
+    }
+  }
+
+  for (size_t ch = 0; ch < rx_channel_nums.size(); ch++) {
+    // Check LO locked
+    rx_sensor_names = usrp->get_rx_sensor_names(ch);
+    if (find(rx_sensor_names.begin(), rx_sensor_names.end(), "lo_locked") != rx_sensor_names.end())
+    {
+      sensor_value_t lo_locked = usrp->get_rx_sensor("lo_locked", ch);
+      cout << boost::format("Checking RX: %s ...") % lo_locked.to_pp_string()
+           << endl;
+      UHD_ASSERT_THROW(lo_locked.to_bool());
+    }
+  }
+}
+
+void Sdr::setupGpio(){
+  cout << "Available GPIO banks: " << std::endl;
+  auto banks = usrp->get_gpio_banks(0);
+  for (auto& bank : banks) {
+      cout << "* " << bank << std::endl;
+  }
+
+  // basic ATR setup
+  if (pwr_amp_pin != -1) {
+    usrp->set_gpio_attr(gpio_bank, "CTRL", ATR_CONTROL, ATR_MASKS);
+    usrp->set_gpio_attr(gpio_bank, "DDR", GPIO_DDR, ATR_MASKS);
+
+    // set amp output pin as desired (on only when TX)
+    usrp->set_gpio_attr(gpio_bank, "ATR_0X", 0, AMP_GPIO_MASK);
+    usrp->set_gpio_attr(gpio_bank, "ATR_RX", 0, AMP_GPIO_MASK);
+    usrp->set_gpio_attr(gpio_bank, "ATR_TX", 0, AMP_GPIO_MASK);
+    usrp->set_gpio_attr(gpio_bank, "ATR_XX", AMP_GPIO_MASK, AMP_GPIO_MASK);
+  }
+
+  //cout << "sdr.AMP_GPIO_MASK: " << bitset<32>(sdr.AMP_GPIO_MASK) << endl;
+
+  // turns external ref out port on or off
+   if (ref_out_int == 1) {
+    usrp->set_clock_source_out(true);
+  } else if (ref_out_int == 0) {
+    usrp->set_clock_source_out(false);
+  } // else do nothing (SDR likely doesn't support this parameter)
+  
+  // update the offset time for start of streaming to be offset from the current usrp time
+}
+
+void Sdr::setupTx(){
+  // Stream formats
+  stream_args_t tx_stream_args(cpu_format, otw_format);
+  tx_stream_args.channels = tx_channel_nums;
+
+  // tx streamer
+  if (transmit) {
+    tx_stream = usrp->get_tx_stream(tx_stream_args);
+    cout << "INFO: tx_stream get_max_num_samps: " << tx_stream->get_max_num_samps() << endl;
+  }
+}
+
+void Sdr::setupRx(){
+   stream_args_t rx_stream_args(cpu_format, otw_format);
+
+  // rx streamer
+  rx_stream_args.channels = rx_channel_nums;
+  rx_stream = usrp->get_rx_stream(rx_stream_args);
+
+  cout << "INFO: rx_stream get_max_num_samps: " << rx_stream->get_max_num_samps() << endl;
 }
