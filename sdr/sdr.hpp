@@ -2,8 +2,11 @@
 #include <string>
 #include <cstdint>
 #include "yaml-cpp/yaml.h"
+#include <boost/format.hpp>
+#include <uhd/usrp/multi_usrp.hpp>
 
 using namespace std;
+using namespace uhd;
 
 class Sdr {
   public:
@@ -38,6 +41,14 @@ class Sdr {
     string rx_ant;
     bool transmit;
 
+    //USRP
+    usrp::multi_usrp::sptr usrp;
+
   private:
     void loadConfigFromYaml(const string& kYamlFile);
+    void createUsrp();
+    void setupUsrp();
+    void check10MhzLock();
+    void gpsLockAndTime();
+    void checkTime(time_spec_t& gps_time);
 };

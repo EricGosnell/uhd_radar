@@ -161,109 +161,16 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     cout << "WARNING: RX duration is shorter than TX duration.\n";
   }
   
-  /*** SETUP USRP ***/
-  
-  // create a usrp device
-  cout << endl;
-  cout << boost::format("Creating the usrp device with: %s...")
-    % sdr.device_args << endl;
-  usrp::multi_usrp::sptr usrp = uhd::usrp::multi_usrp::make(sdr.device_args);
-  cout << boost::format("TX/RX Device: %s") % usrp->get_pp_string() << endl;
-  
-  // Lock mboard clocks
-  usrp->set_clock_source(sdr.clk_ref);
-  usrp->set_time_source(sdr.clk_ref);
-
-  if (sdr.clk_ref == "gpsdo") {
-    // Check for 10 MHz lock
-    vector<string> sensor_names = usrp->get_mboard_sensor_names(0);
-    if (find(sensor_names.begin(), sensor_names.end(), "ref_locked")
-        != sensor_names.end()) {
-        cout << "Waiting for reference lock..." << flush;
-        bool ref_locked = false;
-        for (int i = 0; i < 30 and not ref_locked; i++) {
-            ref_locked = usrp->get_mboard_sensor("ref_locked", 0).to_bool();
-            if (not ref_locked) {
-                cout << "." << flush;
-                this_thread::sleep_for(chrono::seconds(1));
-            }
-        }
-        if (ref_locked) {
-            cout << "LOCKED" << endl;
-        } else {
-            cout << "FAILED" << endl;
-            cout << "Failed to lock to GPSDO 10 MHz Reference. Exiting."
-                      << endl;
-            exit(EXIT_FAILURE);
-        }
-    } else {
-        cout << boost::format(
-            "ref_locked sensor not present on this board.\n");
-    }
-
-    // Wait for GPS lock
-    bool gps_locked = usrp->get_mboard_sensor("gps_locked", 0).to_bool();
-    size_t num_gps_locked = 0;
-    for (int i = 0; i < 30 and not gps_locked; i++) {
-      gps_locked = usrp->get_mboard_sensor("gps_locked", 0).to_bool();
-      if (not gps_locked) {
-          cout << "." << flush;
-          this_thread::sleep_for(chrono::seconds(1));
-      }
-    }
-    if (gps_locked) {
-        num_gps_locked++;
-        cout << boost::format("GPS Locked\n");
-    } else {
-        cerr
-            << "WARNING:  GPS not locked - time will not be accurate until locked"
-            << endl;
-    }
-
-    // Set to GPS time
-    time_spec_t gps_time = time_spec_t(
-        int64_t(usrp->get_mboard_sensor("gps_time", 0).to_int()));
-    usrp->set_time_next_pps(gps_time + 1.0, 0);
-
-    // Wait for it to apply
-    // The wait is 2 seconds because N-Series has a known issue where
-    // the time at the last PPS does not properly update at the PPS edge
-    // when the time is actually set.
-    this_thread::sleep_for(chrono::seconds(2));
-
-    // Check times
-    gps_time = time_spec_t(
-        int64_t(usrp->get_mboard_sensor("gps_time", 0).to_int()));
-    time_spec_t time_last_pps = usrp->get_time_last_pps(0);
-    cout << "USRP time: "
-              << (boost::format("%0.9f") % time_last_pps.get_real_secs())
-              << endl;
-    cout << "GPSDO time: "
-              << (boost::format("%0.9f") % gps_time.get_real_secs()) << std::endl;
-    if (gps_time.get_real_secs() == time_last_pps.get_real_secs())
-        cout << endl
-                  << "SUCCESS: USRP time synchronized to GPS time" << endl
-                  << endl;
-    else
-        std::cerr << endl
-                  << "ERROR: Failed to synchronize USRP time to GPS time"
-                  << endl
-                  << endl;
-  } else {
-    // set the USRP time, let chill for a little bit to lock
-    usrp->set_time_next_pps(time_spec_t(0.0));
-    this_thread::sleep_for((chrono::milliseconds(1000)));
-  }
-
+//USRP Setup
   // always select the subdevice first, the channel mapping affects the
   // other settings
   if (sdr.transmit) {
-    usrp->set_tx_subdev_spec(sdr.subdev);
+  sdr.usrp->set_tx_subdev_spec(sdr.subdev);
   }
-  usrp->set_rx_subdev_spec(sdr.subdev);
+  sdr.usrp->set_rx_subdev_spec(sdr.subdev);
 
   // set master clock rate
-  usrp->set_master_clock_rate(sdr.clk_rate);
+  sdr.usrp->set_master_clock_rate(sdr.clk_rate);
 
   // detect which channels to use
   vector<string> tx_channel_strings;
@@ -271,7 +178,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   boost::split(tx_channel_strings, sdr.tx_channels, boost::is_any_of("\"',"));
   for (size_t ch = 0; ch < tx_channel_strings.size(); ch++) {
     size_t chan = stoi(tx_channel_strings[ch]);
-    if (chan >= usrp->get_tx_num_channels()) {
+    if (chan >= sdr.usrp->get_tx_num_channels()) {
       throw std::runtime_error("Invalid TX channel(s) specified.");
     } else
       tx_channel_nums.push_back(stoi(tx_channel_strings[ch]));
@@ -281,7 +188,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   boost::split(rx_channel_strings, sdr.rx_channels, boost::is_any_of("\"',"));
   for (size_t ch = 0; ch < rx_channel_strings.size(); ch++) {
     size_t chan = stoi(rx_channel_strings[ch]);
-    if (chan >= usrp->get_rx_num_channels()) {
+    if (chan >= sdr.usrp->get_rx_num_channels()) {
       throw std::runtime_error("Invalid RX channel(s) specified.");
     } else
       rx_channel_nums.push_back(stoi(rx_channel_strings[ch]));
@@ -289,12 +196,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   // set the RF parameters based on 1 or 2 channel operation
   if (tx_channel_nums.size() == 1) {
-    set_rf_params_single(usrp, rf0, rx_channel_nums, tx_channel_nums);
+    set_rf_params_single(sdr.usrp, rf0, rx_channel_nums, tx_channel_nums);
   } else if (tx_channel_nums.size() == 2) {
     if (!sdr.transmit) {
       throw std::runtime_error("Non-transmit mode not supported by set_rf_params_multi");
     }
-    set_rf_params_multi(usrp, rf0, rf1, rx_channel_nums, tx_channel_nums);
+    set_rf_params_multi(sdr.usrp, rf0, rf1, rx_channel_nums, tx_channel_nums);
   } else {
     throw std::runtime_error("Number of channels requested not supported");
   }
@@ -310,10 +217,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   if (sdr.transmit) {
     for (size_t ch = 0; ch < tx_channel_nums.size(); ch++) {
       // Check LO locked
-      tx_sensor_names = usrp->get_tx_sensor_names(ch);
+      tx_sensor_names = sdr.usrp->get_tx_sensor_names(ch);
       if (find(tx_sensor_names.begin(), tx_sensor_names.end(), "lo_locked") != tx_sensor_names.end())
       {
-        sensor_value_t lo_locked = usrp->get_tx_sensor("lo_locked", ch);
+        sensor_value_t lo_locked = sdr.usrp->get_tx_sensor("lo_locked", ch);
         cout << boost::format("Checking TX: %s ...") % lo_locked.to_pp_string()
             << endl;
         UHD_ASSERT_THROW(lo_locked.to_bool());
@@ -323,10 +230,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   for (size_t ch = 0; ch < rx_channel_nums.size(); ch++) {
     // Check LO locked
-    rx_sensor_names = usrp->get_rx_sensor_names(ch);
+    rx_sensor_names = sdr.usrp->get_rx_sensor_names(ch);
     if (find(rx_sensor_names.begin(), rx_sensor_names.end(), "lo_locked") != rx_sensor_names.end())
     {
-      sensor_value_t lo_locked = usrp->get_rx_sensor("lo_locked", ch);
+      sensor_value_t lo_locked = sdr.usrp->get_rx_sensor("lo_locked", ch);
       cout << boost::format("Checking RX: %s ...") % lo_locked.to_pp_string()
            << endl;
       UHD_ASSERT_THROW(lo_locked.to_bool());
@@ -335,34 +242,34 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   /*** SETUP GPIO ***/
   cout << "Available GPIO banks: " << std::endl;
-  auto banks = usrp->get_gpio_banks(0);
+  auto banks = sdr.usrp->get_gpio_banks(0);
   for (auto& bank : banks) {
       cout << "* " << bank << std::endl;
   }
 
   // basic ATR setup
   if (sdr.pwr_amp_pin != -1) {
-    usrp->set_gpio_attr(sdr.gpio_bank, "CTRL", sdr.ATR_CONTROL, sdr.ATR_MASKS);
-    usrp->set_gpio_attr(sdr.gpio_bank, "DDR", sdr.GPIO_DDR, sdr.ATR_MASKS);
+    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "CTRL", sdr.ATR_CONTROL, sdr.ATR_MASKS);
+    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "DDR", sdr.GPIO_DDR, sdr.ATR_MASKS);
 
     // set amp output pin as desired (on only when TX)
-    usrp->set_gpio_attr(sdr.gpio_bank, "ATR_0X", 0, sdr.AMP_GPIO_MASK);
-    usrp->set_gpio_attr(sdr.gpio_bank, "ATR_RX", 0, sdr.AMP_GPIO_MASK);
-    usrp->set_gpio_attr(sdr.gpio_bank, "ATR_TX", 0, sdr.AMP_GPIO_MASK);
-    usrp->set_gpio_attr(sdr.gpio_bank, "ATR_XX", sdr.AMP_GPIO_MASK, sdr.AMP_GPIO_MASK);
+    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "ATR_0X", 0, sdr.AMP_GPIO_MASK);
+    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "ATR_RX", 0, sdr.AMP_GPIO_MASK);
+    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "ATR_TX", 0, sdr.AMP_GPIO_MASK);
+    sdr.usrp->set_gpio_attr(sdr.gpio_bank, "ATR_XX", sdr.AMP_GPIO_MASK, sdr.AMP_GPIO_MASK);
   }
 
   //cout << "sdr.AMP_GPIO_MASK: " << bitset<32>(sdr.AMP_GPIO_MASK) << endl;
 
   // turns external ref out port on or off
    if (sdr.ref_out_int == 1) {
-    usrp->set_clock_source_out(true);
+    sdr.usrp->set_clock_source_out(true);
   } else if (sdr.ref_out_int == 0) {
-    usrp->set_clock_source_out(false);
+    sdr.usrp->set_clock_source_out(false);
   } // else do nothing (SDR likely doesn't support this parameter)
   
   // update the offset time for start of streaming to be offset from the current usrp time
-  time_offset = time_offset + time_spec_t(usrp->get_time_now()).get_real_secs();
+  time_offset = time_offset + time_spec_t(sdr.usrp->get_time_now()).get_real_secs();
 
   /*** TX SETUP ***/
 
@@ -373,7 +280,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   // tx streamer
   tx_streamer::sptr tx_stream;
   if (sdr.transmit) {
-    tx_stream = usrp->get_tx_stream(tx_stream_args);
+    tx_stream = sdr.usrp->get_tx_stream(tx_stream_args);
     cout << "INFO: tx_stream get_max_num_samps: " << tx_stream->get_max_num_samps() << endl;
   }
 
@@ -383,7 +290,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   // rx streamer
   rx_stream_args.channels = rx_channel_nums;
-  rx_streamer::sptr rx_stream = usrp->get_rx_stream(rx_stream_args);
+  rx_streamer::sptr rx_stream = sdr.usrp->get_rx_stream(rx_stream_args);
 
   cout << "INFO: rx_stream get_max_num_samps: " << rx_stream->get_max_num_samps() << endl;
 
