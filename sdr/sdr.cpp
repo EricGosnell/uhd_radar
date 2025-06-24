@@ -10,8 +10,6 @@
 */
 Sdr::Sdr(const string& kYamlFile) {
   loadConfigFromYaml(kYamlFile);
-  createUsrp();
-  setupUsrp();
 }
 
 /**
