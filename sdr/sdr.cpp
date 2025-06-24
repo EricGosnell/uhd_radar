@@ -10,8 +10,6 @@
 */
 Sdr::Sdr(const string& kYamlFile) {
   loadConfigFromYaml(kYamlFile);
-  createUsrp();
-  setupUsrp();
 }
 
 /**
@@ -84,7 +82,15 @@ void Sdr::loadConfigFromYaml(const string& kYamlFile) {
   }
 }
 
-
+/**
+* @brief Initializes the USRP device setting time and clock source
+*
+* Creates the USRP device using the specified device arguments
+* and sets the clock source to the specified reference clock.
+* It also locks the mboard clocks and sets the time source.
+* It ensures that the USRP device is ready for operation
+*
+*/
 void Sdr::createUsrp(){
   cout << endl;
   cout << boost::format("Creating the usrp device with: %s...")
@@ -97,6 +103,14 @@ void Sdr::createUsrp(){
   usrp->set_time_source(clk_ref);
 }
 
+/**
+* @brief sets up the USRP device
+*
+* Initializes the USRP device with the specified parameters, sets the subdevice
+* specifications, master clock rate, and configures the RF parameters. checks
+* reference and LO locks, and initializes GPIO, transmit, and receive settings.
+*
+*/
 void Sdr::setupUsrp(){
   if (clk_ref == "gpsdo") {
     check10MhzLock();
@@ -123,7 +137,16 @@ void Sdr::setupUsrp(){
   setupRx();
 }
 
-
+/*** @brief Checks for 10 MHz reference lock
+*
+* This function checks if the USRP device has locked to the 10 MHz reference
+* signal. Retrieves the list of sensor names from the USRP device and checks
+* for the presence of the "ref_locked" sensor. If it exists, waits for
+* the reference lock to be established, printing a dot every second until
+* the lock is achieved or a timeout occurs. If the lock is successful, it
+* prints "LOCKED"; otherwise, it prints "FAILED" and exits the program.
+*
+*/
 void Sdr::check10MhzLock(){
   vector<string> sensor_names = usrp->get_mboard_sensor_names(0);
     if (find(sensor_names.begin(), sensor_names.end(), "ref_locked")
@@ -151,6 +174,15 @@ void Sdr::check10MhzLock(){
     }
 }
 
+/*** @brief Locks GPS and sets the USRP time
+ * 
+ * Waits for the GPS to lock, retrieves the GPS time, and sets the
+ * USRP time to the GPS time. If the GPS is locked, sets the USRP time,
+ * checks if the USRP time matches the GPS time and prints results. If
+ * GPS not locked, prints a warning message indicating that the time
+ * isn't accurate.
+ *
+*/
 void Sdr::gpsLockAndTime(){
   //wait for GPS lock
   bool gps_locked = usrp->get_mboard_sensor("gps_locked", 0).to_bool();
@@ -183,7 +215,12 @@ void Sdr::gpsLockAndTime(){
     this_thread::sleep_for(chrono::seconds(2));
     checkTime(gps_time);
 }
-
+/*** @brief Checks the USRP time against GPS time
+ *
+ * Retrieves the GPS time from the USRP device, compares it with last PPS time
+ * from USRP device, and prints results. If the GPS time matches the last PPS time,
+ * synchronization is indicated. If it doesn't match, an error message is printed.
+ */
 void Sdr::checkTime(time_spec_t& gps_time){
  gps_time = time_spec_t(
         int64_t(usrp->get_mboard_sensor("gps_time", 0).to_int()));
@@ -204,7 +241,12 @@ void Sdr::checkTime(time_spec_t& gps_time){
                   << endl;
 }
 
-
+/*** @brief Detects and validates TX and RX channels
+ * 
+ * Splits the specified TX and RX channel strings into individual channel numbers,
+ * checks if they are valid, and stores them in the respective vectors.
+ * If any channel number is invalid, throws a runtime error.
+ */
 void Sdr::detectChannels(){
   boost::split(tx_channel_strings, tx_channels, boost::is_any_of("\"',"));
   for (size_t ch = 0; ch < tx_channel_strings.size(); ch++) {
@@ -223,6 +265,15 @@ void Sdr::detectChannels(){
       rx_channel_nums.push_back(stoi(rx_channel_strings[ch]));
   }
 }
+/*** @brief Sets the RF parameters for the USRP device
+ * 
+ * Configures the RF parameters for the USRP device based on the number of
+ * TX channels specified. If only one TX channel is specified, calls
+ * `set_rf_params_single` function. If two TX channels specified, calls
+ * `set_rf_params_multi`. If number of channels is not supported, throws a runtime
+ * error. After setting RF parameters, allows for a setup time
+ * to ensure the parameters are applied correctly.
+*/
 
 void Sdr::setRFParams(){
  // set the RF parameters based on 1 or 2 channel operation
@@ -240,6 +291,15 @@ void Sdr::setRFParams(){
   // allow for some setup time
   this_thread::sleep_for(chrono::seconds(1));
 }
+
+/*** @brief Checks the reference and local oscillator (LO) lock status
+ * 
+ * Checks the lock status of the reference and local oscillator
+ * for both transmit and receive channels. It retrieves the sensor names for
+ * each channel and checks if the "lo_locked" sensor is present. If it is,
+ * it retrieves the lock status and asserts that it is true. If the lock is not
+ * established, it throws an assertion error.
+*/
 
 void Sdr::refLoLockDetect(){
  // Check Ref and LO Lock detect
@@ -270,6 +330,14 @@ void Sdr::refLoLockDetect(){
     }
   }
 }
+/*** @brief Sets up GPIO pins for the USRP device
+ * 
+ * Configures the GPIO pins for the USRP device based on YAML configuration file. 
+ * It sets the GPIO bank, control, data direction, and ATR masks. If power amplifier pin 
+ * is specified, configures the ATR pins accordingly. Also sets the external reference
+ * output port based on the specified integer value. 1 enables the reference output, 0
+ * disables the reference output. If the value is not specified, it does nothing.
+*/
 
 void Sdr::setupGpio(){
   cout << "Available GPIO banks: " << std::endl;
@@ -302,6 +370,13 @@ void Sdr::setupGpio(){
   // update the offset time for start of streaming to be offset from the current usrp time
 }
 
+/*** @brief Sets up the transmit stream for the USRP device
+ * 
+ * Initializes the transmit stream with the specified CPU and OTW formats,
+ * and sets the number of channels for transmission. If transmission is enabled,
+ * retrieves the transmit stream from the USRP device and prints maximum
+ * number of samples that can be sent in a single call.
+*/
 void Sdr::setupTx(){
   // Stream formats
   stream_args_t tx_stream_args(cpu_format, otw_format);
@@ -314,6 +389,13 @@ void Sdr::setupTx(){
   }
 }
 
+/*** @brief Sets up the receive stream for the USRP device
+ * 
+ * Initializes the receive stream with the specified CPU and OTW formats,
+ * and sets the number of channels for reception. Retrieves the receive stream
+ * from the USRP device and prints maximum number of samples that can be
+ * received in a single call.
+ */
 void Sdr::setupRx(){
    stream_args_t rx_stream_args(cpu_format, otw_format);
 
