@@ -64,6 +64,24 @@ void Sdr::loadConfigFromYaml(const string& kYamlFile) {
   rx_ant = rf1["rx_ant"].as<string>();
 
   transmit = rf0["transmit"].as<bool>(true); // True if transmission enabled
+
+/**
+* Sanity checks for configuration parameters
+*
+* Ensures that the configuration parameters loaded from the YAML file
+* are consistent and valid.
+*
+*/
+
+  if (tx_rate != rx_rate){
+    cout << "WARNING: TX sample rate does not match RX sample rate.\n";
+  }
+  if (config["GENERATE"]["sample_rate"].as<double>() != tx_rate){
+    cout << "WARNING: TX sample rate does not match sample rate of generated chirp.\n";
+  }
+  if (bw < config["GENERATE"]["chirp_bandwidth"].as<double>() && bw != 0){
+    cout << "WARNING: RX bandwidth is narrower than the chirp bandwidth.\n";
+  }
 }
 
 
