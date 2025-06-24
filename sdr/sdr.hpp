@@ -57,7 +57,7 @@ class Sdr {
 
     vector<string> rx_channel_strings;
     vector<size_t> rx_channel_nums;
-
+    
     void loadConfigFromYaml(const string& kYamlFile);
     void createUsrp();
     void setupUsrp();

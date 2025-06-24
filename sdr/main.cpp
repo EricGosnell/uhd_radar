@@ -84,6 +84,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   Sdr sdr(yaml_filename);
   Chirp chirp(yaml_filename);
   YAML::Node config = YAML::LoadFile(yaml_filename);
+  sdr.createUsrp();
+  sdr.setupUsrp();
 
   //YAML::Node rf0 = config["RF0"];
  // YAML::Node rf1 = config["RF1"];
@@ -118,25 +120,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   cout << "Note: Pre-summing is supported. If used, each sample written will have num_presums error-free samples averaged in." << endl;
   cout << "Note: Nothing is written to the file for error pulses." << endl;
   cout << "Note: A full num_pulses of error-free chirp data will be collected. ";
-  cout << "(Total number of TX chirps will be num_pulses + # errors)" << endl;
-
-  /*** SANITY CHECKS ***/
-  
-  if (sdr.tx_rate != sdr.rx_rate){
-    cout << "WARNING: TX sample rate does not match RX sample rate.\n";
-  }
-  if (config["GENERATE"]["sample_rate"].as<double>() != sdr.tx_rate){
-    cout << "WARNING: TX sample rate does not match sample rate of generated chirp.\n";
-  }
-  if (sdr.bw < config["GENERATE"]["chirp_bandwidth"].as<double>() && sdr.bw != 0){
-    cout << "WARNING: RX bandwidth is narrower than the chirp bandwidth.\n";
-  }
-  if (config["GENERATE"]["chirp_length"].as<double>() > chirp.tx_duration){
-    cout << "WARNING: TX duration is shorter than chirp duration.\n";
-  }
-  if (config["CHIRP"]["rx_duration"].as<double>() < chirp.tx_duration) {
-    cout << "WARNING: RX duration is shorter than TX duration.\n";
-  }
+  cout << "(Total number of TX chirps will be num_pulses + # errors)" << endl; 
   
   cout << "INFO: Number of TX samples: " << num_tx_samps << endl;  //needs to be after chirp and sdr object are both made
   cout << "INFO: Number of RX samples: " << num_rx_samps << endl << endl;  //needs to be after chirp and sdr object are both made

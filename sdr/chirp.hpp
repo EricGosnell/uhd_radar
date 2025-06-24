@@ -1,6 +1,8 @@
 #ifndef CHIRP_HPP
 #define CHIRP_HPP
 #include "yaml-cpp/yaml.h"
+#include <iostream>
+#include <cstdint>
 
 using namespace std;
 
