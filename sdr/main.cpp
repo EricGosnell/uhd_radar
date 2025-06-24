@@ -191,12 +191,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   if (bw < config["GENERATE"]["chirp_bandwidth"].as<double>() && bw != 0){
     cout << "WARNING: RX bandwidth is narrower than the chirp bandwidth.\n";
   }
-  if (config["GENERATE"]["chirp_length"].as<double>() > chirp.tx_duration){
-    cout << "WARNING: TX duration is shorter than chirp duration.\n";
-  }
-  if (config["CHIRP"]["rx_duration"].as<double>() < chirp.tx_duration) {
-    cout << "WARNING: RX duration is shorter than TX duration.\n";
-  }
   
   /*** SETUP USRP ***/
   

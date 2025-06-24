@@ -1,4 +1,6 @@
 #include "yaml-cpp/yaml.h"
+#include <iostream>
+#include <cstdint>
 
 using namespace std;
 
