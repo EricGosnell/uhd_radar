@@ -1,3 +1,5 @@
+#ifndef SDR_HPP
+#define SDR_HPP
 #pragma once
 #include <string>
 #include <cstdint>
@@ -56,7 +58,6 @@ class Sdr {
     vector<string> rx_channel_strings;
     vector<size_t> rx_channel_nums;
 
-  private:
     void loadConfigFromYaml(const string& kYamlFile);
     void createUsrp();
     void setupUsrp();
@@ -70,3 +71,5 @@ class Sdr {
     void setupTx();
     void setupRx();
 };
+
+#endif
