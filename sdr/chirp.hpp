@@ -1,3 +1,5 @@
+#ifndef CHIRP_HPP
+#define CHIRP_HPP
 #include "yaml-cpp/yaml.h"
 #include <iostream>
 #include <cstdint>
@@ -24,3 +26,5 @@ public:
 private: 
     void assignVarFromYaml(const string& kYamlFile);
 };
+
+#endif
