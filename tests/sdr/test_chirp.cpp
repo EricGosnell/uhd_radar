@@ -3,6 +3,13 @@
 
 using namespace std;
 
+/**
+ * @brief tests that the construction of chirp class reads from yaml correctly
+ * 
+ * Has unit tests for all variables assigned in the assignVarFromUYam; 
+ * fucntion in the chirp class to make sure the function pulls from Yaml
+ * correctly
+ */
 TEST(assignVarFromYaml, loadsDefault){
     string yaml_filename = "../../../config/default.yaml";
     Chirp chirp(yaml_filename);
