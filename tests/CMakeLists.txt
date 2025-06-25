@@ -35,6 +35,7 @@ target_link_libraries(test_pseudorandom_phase
     Boost::filesystem
 )
 
+target_compile_definitions(test_chirp PRIVATE CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../config")
 target_include_directories(test_chirp PRIVATE ../sdr)
 target_link_libraries(test_chirp
     gtest_main

@@ -11,8 +11,9 @@ using namespace std;
  * correctly
  */
 TEST(assignVarFromYaml, loadsDefault){
-    string yaml_filename = "../../../config/default.yaml";
-    Chirp chirp(yaml_filename);
+
+    const string kConfigFile = string(CONFIG_DIR) + "/default.yaml";
+    Chirp chirp(kConfigFile);
 
     EXPECT_EQ(chirp.time_offset, 1);
     EXPECT_EQ(chirp.tx_duration, 20e-6);
