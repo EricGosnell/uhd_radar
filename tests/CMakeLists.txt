@@ -13,6 +13,11 @@ add_executable(test_sdr
     ../sdr/rf_settings.cpp
 )
 
+add_executable(test_chirp
+    sdr/test_chirp.cpp
+    ../sdr/chirp.cpp
+)
+
 add_executable(test_pseudorandom_phase
     sdr/test_pseudorandom_phase.cpp
     ../sdr/pseudorandom_phase.cpp
@@ -30,6 +35,13 @@ target_link_libraries(test_pseudorandom_phase
     Boost::filesystem
 )
 
+target_include_directories(test_chirp PRIVATE ../sdr)
+target_link_libraries(test_chirp
+    gtest_main
+    Boost::filesystem
+    yaml-cpp
+)
+
 target_include_directories(test_sdr PRIVATE ../sdr)
 target_link_libraries(test_sdr
     uhd
@@ -42,3 +54,4 @@ include(GoogleTest)
 gtest_discover_tests(test_utils)
 gtest_discover_tests(test_pseudorandom_phase)
 gtest_discover_tests(test_sdr)
+gtest_discover_tests(test_chirp)
