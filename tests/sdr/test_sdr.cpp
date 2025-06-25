@@ -12,8 +12,8 @@ using namespace std;
  * correctly
  */
 TEST(loadConfigFromYaml, LoadsDefault){
-    string yaml_filename = "../../../config/default.yaml";
-    Sdr sdr(yaml_filename);
+    const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
+    Sdr sdr(kYamlFile);
     //DEVICE
     EXPECT_EQ(sdr.device_args, "num_recv_frames=700,num_send_frames=700,recv_frame_size=11000,send_frame_size=11000");
     EXPECT_EQ(sdr.subdev, "A:A");
