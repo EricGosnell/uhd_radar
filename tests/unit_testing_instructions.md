@@ -38,25 +38,27 @@ Tests should follow the same file structure outlined above, though the name of e
 
 The tests must contain at least one `EXPECT_*` statement that compares the actual result to the expected result. It is important to note that `EXPECT_*` statements are preferred over `ASSERT_*` statements as they generate non-fatal errors and allow for multiple failures to be reported. `ASSERT_*` statements abort the current process, potentially skipping any cleanup steps. A list of all `EXPECT_*` statement types can be found on the [GoogleTest Docs](https://google.github.io/googletest/reference/assertions.html), but common ones are `EXPECT_EQ, EXPECT_GT, EXPECT_TRUE, EXPECT_STREQ, EXPECT_NEAR`. An optional custom error message may be streamed into an `EXPECT_*` statement with the `<<` operator, as shown below.
 
-All test files must include the GTest header with `#include <gtest/gtest.h>` as well as importing the source file being tested with `#include "../../<source_dir>/<file>.hpp"`. It is important to note that while the import path is relative to the test file's location, the path to any files being opened at runtime is relative to where the code is being run from (`uhd_radar/sdr/build/tests/`).
+All test files must include the GTest header with `#include <gtest/gtest.h>` as well as importing the source file being tested with `#include "../../<source_dir>/<file>.hpp"`. It is important to note that while the import path is relative to the test file's location, you must use a relative file path when opening a file at runtime. This can be done by adding a path macro the CMake file that defines the path from the CMake source directory to your file. See the CMake file and example test below for more details.
 
 **After creating a test file, you must add it to CMake for it to be compiled and run by Google Test!** To do this, you must add the following sections of code to `tests/CMakeLists.txt` (if the file structure is set up correctly, `source_dir` should match `test_dir`). For better readability, paste each section from below into the matching section the CMake file (ex. add_executable should be with all the other existing calls to add_executable).
     
-    # Add any required packages here
-    # ex. find_package(Boost REQUIRED COMPONENTS filesystem)
-    
+    # Add any required packages here. Ex:
+    # find_package(Boost REQUIRED COMPONENTS filesystem)
+    ...
     add_executable(test_<file>
         <test_dir>/test_<file>.cpp
         ../<source_dir>/<file>.cpp
     )
-    
+    ...
+    # If you are opening files in your test, add the path from this CMake file to your files directory here. Ex:
+    # target_compile_definitions(test_<file> PRIVATE CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../config")
     target_include_directories(test_<file> PRIVATE ../<source_dir>)
     target_link_libraries(test_<file>
         gtest_main
         # Other required packages go here such as UHD, yaml-cpp, or Boost::filesystem
         # Make sure to call find_package() above
     )
-    
+    ...
     gtest_discover_tests(test_<file>)
 
 ###### Example C++ test:
@@ -66,6 +68,8 @@ All test files must include the GTest header with `#include <gtest/gtest.h>` as 
 
     TEST(TestSuiteName, TestCaseName) {
         ... code ...
+        const string kConfigFile = string(CONFIG_DIR) + "/default.yaml"; // Example of how to use relative file path
+        ...
         EXPECT_EQ(actual_val, expected_val) << "Optional custom message upon failure";
         EXPECT_TRUE(boolean_val);
     }
