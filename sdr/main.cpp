@@ -1,20 +1,15 @@
 #include <uhd/utils/thread.hpp>
 #include <uhd/utils/safe_main.hpp>
-#include <uhd/usrp/multi_usrp.hpp>
 #include <uhd/exception.hpp>
 #include <uhd/types/tune_request.hpp>
 #include <uhd/convert.hpp>
 #include <boost/program_options.hpp>
-#include <boost/format.hpp>
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 #include <boost/thread/barrier.hpp>
-#include <boost/algorithm/string.hpp>
-#include <iostream>
 #include <fstream>
 #include <csignal>
 #include <complex>
-#include <thread>
 #include <mutex>
 #include <cstdlib>
 #include <boost/asio/io_service.hpp>
@@ -22,15 +17,12 @@
 #include <boost/asio/write.hpp>
 
 #include "yaml-cpp/yaml.h"
-
 #include "rf_settings.hpp"
 #include "pseudorandom_phase.hpp"
 #include "utils.hpp"
 #include "sdr.hpp"
 #include "chirp.hpp"
-
-using namespace std;
-using namespace uhd;
+#include "common.hpp"
 
 /*
  * PROTOTYPES
@@ -66,26 +58,18 @@ long int last_pulse_num_written = -1; // Index number (pulses_received - error_c
 // Cout mutex
 std::mutex cout_mutex;
 
-/*** SANITY CHECKS ***/
-void sanity_checks(Sdr& sdr, Chirp& chirp, YAML::Node& config) {
-  if (sdr.tx_rate != sdr.rx_rate){
-    cout << "WARNING: TX sample rate does not match RX sample rate.\n";
-  }
-  if (config["GENERATE"]["sample_rate"].as<double>() != sdr.tx_rate){
-    cout << "WARNING: TX sample rate does not match sample rate of generated chirp.\n";
-  }
-  if (sdr.bw < config["GENERATE"]["chirp_bandwidth"].as<double>() && sdr.bw != 0){
-    cout << "WARNING: RX bandwidth is narrower than the chirp bandwidth.\n";
-  }
-  if (config["GENERATE"]["chirp_length"].as<double>() > chirp.tx_duration){
-    cout << "WARNING: TX duration is shorter than chirp duration.\n";
-  }
-  if (config["CHIRP"]["rx_duration"].as<double>() < chirp.tx_duration) {
-    cout << "WARNING: RX duration is shorter than TX duration.\n";
-  }
-}
 
-//Helper function for main, checks for errors in the buffer repeatedly in while loop
+/**
+ * @brief Checks for errors in the RX buffer and adds the errors to a counter, before using transform() on the incoming pulse
+ * 
+ * checks for assorted unknown errors related to RX, checks for unexpected number of samples in the RX buffer, and then uses the transform() function if no errors are found
+ * @param n_samps_in_rx_buff Number of samples in the RX buffer
+ * @param rx_md Metadata from the RX stream
+ * @param chirp Chirp object containing parameters for the chirp
+ * @param buff Buffer for individual RX samples
+ * @param sample_sum Sum error-free RX pulses
+ * @param inversion_phase Phase to use for phase inversion of this chirp
+ */
 void handleRxBuffer(size_t n_samps_in_rx_buff, rx_metadata_t& rx_md, Chirp& chirp, vector<complex<float>>& buff, vector<complex<float>>& sample_sum, float& inversion_phase) {
   if (chirp.phase_dither) {
     inversion_phase = -1.0 * get_next_phase(false); // Get next phase from the generator each time to keep in sequence with TX
@@ -129,7 +113,18 @@ void handleRxBuffer(size_t n_samps_in_rx_buff, rx_metadata_t& rx_md, Chirp& chir
   }
 }
 
-// Check if we have a full sample_sum ready to write to file
+/**
+ * @brief Writes received RX data to file if enough pulses have been received
+ * 
+ * Checks if the number of pulses received is enough to write a full sample_sum to the file, only if enough error-free pulses have been received.
+ * @param pulses_received Total number of pulses received
+ * @param error_count Total number of errors encountered
+ * @param last_pulse_num_written Last pulse number written to the file
+ * @param chirp Chirp object containing parameters for the chirp
+ * @param sample_sum Vector containing the sum of error-free RX pulses
+ * @param outfile Output file stream to write the RX data
+ * @return Returns true if the data was successfully written to the file, false otherwise signaling error
+ */
 bool checkForFullSampleSum(size_t pulses_received, long int error_count, long int& last_pulse_num_written, Chirp& chirp, vector<complex<float>>& sample_sum, ofstream& outfile) {
   if (((pulses_received - error_count) > last_pulse_num_written) && ((pulses_received - error_count) % chirp.num_presums == 0)) {
     // As each sample is added, it has phase inversion applied and is divided by # presums, so no additional work to do here.
@@ -150,6 +145,17 @@ bool checkForFullSampleSum(size_t pulses_received, long int error_count, long in
 }
 
 // Split output files based on number of chirps
+
+/**
+ * @brief Determines if the amount of pulses received is enough to add another file for storage
+ * 
+ * Creates more files if the number of pulses is higher than the maximum number of chirps per file, but only if file splitting is enabled.
+ * @param chirp Chirp object containing parameters for the chirp
+ * @param outfile Output file stream to write the RX data
+ * @param current_filename Current filename for the output file
+ * @param save_file_index Index of the current file being saved
+ * @param last_pulse_num_written Last pulse number written to the file
+ */
 void splitOutputFiles(Chirp& chirp, ofstream& outfile, string& current_filename, int& save_file_index, long int last_pulse_num_written) {
   if ( (chirp.max_chirps_per_file > 0) && (int(last_pulse_num_written / chirp.max_chirps_per_file) > save_file_index)) {
     outfile.close();
@@ -170,6 +176,19 @@ void splitOutputFiles(Chirp& chirp, ofstream& outfile, string& current_filename,
 }
 
 //Wrapping up main function after the RX loop is done
+
+/**
+ * @brief Finalizes the main function once the main while loop is done
+ * 
+ * Various tasks are finished and significant information is printed to the console, such as the number of errors encountered, total pulses written, and total pulses attempted.
+ * @param gps_stream GPS stream descriptor for closing the GPS file
+ * @param outfile Output file stream to close
+ * @param current_filename Current filename for the output file
+ * @param error_count Total number of errors encountered during the RX process
+ * @param last_pulse_num_written Last pulse number written to the file
+ * @param pulses_received Total number of pulses received during the RX process
+ * @param transmit_thread Thread group for the transmit worker
+ */
 void wrapUp(boost::asio::posix::stream_descriptor& gps_stream, ofstream& outfile, string& current_filename, long int error_count, long int last_pulse_num_written, long int pulses_received, boost::thread_group& transmit_thread) {
   cout << "[RX] Closing output file." << endl;
   outfile.close();
@@ -206,6 +225,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   Sdr sdr(yaml_filename);
   Chirp chirp(yaml_filename);
   YAML::Node config = YAML::LoadFile(yaml_filename);
+  sdr.createUsrp();
+  sdr.setupUsrp();
 
   //YAML::Node rf0 = config["RF0"];
  // YAML::Node rf1 = config["RF1"];
@@ -240,10 +261,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   cout << "Note: Pre-summing is supported. If used, each sample written will have num_presums error-free samples averaged in." << endl;
   cout << "Note: Nothing is written to the file for error pulses." << endl;
   cout << "Note: A full num_pulses of error-free chirp data will be collected. ";
-  cout << "(Total number of TX chirps will be num_pulses + # errors)" << endl;
-
-  /*** SANITY CHECKS ***/
-  sanity_checks(sdr, chirp, config);
+  cout << "(Total number of TX chirps will be num_pulses + # errors)" << endl; 
   
   cout << "INFO: Number of TX samples: " << num_tx_samps << endl;  //needs to be after chirp and sdr object are both made
   cout << "INFO: Number of RX samples: " << num_rx_samps << endl << endl;  //needs to be after chirp and sdr object are both made
