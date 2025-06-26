@@ -1,16 +1,9 @@
 #ifndef SDR_HPP
 #define SDR_HPP
-#pragma once
-#include <string>
-#include <cstdint>
-#include "yaml-cpp/yaml.h"
-#include <boost/format.hpp>
-#include <uhd/usrp/multi_usrp.hpp>
-#include <boost/algorithm/string.hpp>
-#include "rf_settings.hpp"
 
-using namespace std;
-using namespace uhd;
+#include "yaml-cpp/yaml.h"
+#include "rf_settings.hpp"
+#include "common.hpp"
 
 class Sdr {
   public:
