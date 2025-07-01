@@ -19,7 +19,7 @@ GENERATE:
     chirp_length: &chirp_len 20e-6       # [s] Chirp length without zero padding
     pulse_length: &pulse_len 20e-6       # [s] Total pulse length (chirp +
                                          #   symmetric zero padding)    
-    out_file: &ch_sent "data/chirp.bin"  # The name of the output binary file
+    out_file: &ch_sent "chirp.bin"  # The name of the output binary file
                                          #   containing the pulse samples
     show_plot: False                     # Display a time-domain plot of the
                                          #   generated chirp
