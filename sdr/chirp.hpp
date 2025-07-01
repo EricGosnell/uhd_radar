@@ -1,6 +1,7 @@
+#ifndef CHIRP_HPP
+#define CHIRP_HPP
 #include "yaml-cpp/yaml.h"
-
-using namespace std;
+#include "common.hpp"
 
 class Chirp{
 
@@ -22,3 +23,5 @@ public:
 private: 
     void assignVarFromYaml(const string& kYamlFile);
 };
+
+#endif

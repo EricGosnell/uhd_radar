@@ -1,20 +1,15 @@
 #include <uhd/utils/thread.hpp>
 #include <uhd/utils/safe_main.hpp>
-#include <uhd/usrp/multi_usrp.hpp>
 #include <uhd/exception.hpp>
 #include <uhd/types/tune_request.hpp>
 #include <uhd/convert.hpp>
 #include <boost/program_options.hpp>
-#include <boost/format.hpp>
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 #include <boost/thread/barrier.hpp>
-#include <boost/algorithm/string.hpp>
-#include <iostream>
 #include <fstream>
 #include <csignal>
 #include <complex>
-#include <thread>
 #include <mutex>
 #include <cstdlib>
 #include <boost/asio/io_service.hpp>
@@ -22,15 +17,12 @@
 #include <boost/asio/write.hpp>
 
 #include "yaml-cpp/yaml.h"
-
 #include "rf_settings.hpp"
 #include "pseudorandom_phase.hpp"
 #include "utils.hpp"
 #include "sdr.hpp"
 #include "chirp.hpp"
-
-using namespace std;
-using namespace uhd;
+#include "common.hpp"
 
 /*
  * PROTOTYPES
@@ -206,6 +198,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   Sdr sdr(yaml_filename);
   Chirp chirp(yaml_filename);
   YAML::Node config = YAML::LoadFile(yaml_filename);
+  sdr.createUsrp();
+  sdr.setupUsrp();
 
   //YAML::Node rf0 = config["RF0"];
  // YAML::Node rf1 = config["RF1"];
@@ -240,10 +234,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   cout << "Note: Pre-summing is supported. If used, each sample written will have num_presums error-free samples averaged in." << endl;
   cout << "Note: Nothing is written to the file for error pulses." << endl;
   cout << "Note: A full num_pulses of error-free chirp data will be collected. ";
-  cout << "(Total number of TX chirps will be num_pulses + # errors)" << endl;
 
-  /*** SANITY CHECKS ***/
-  sanity_checks(sdr, chirp, config);
+  cout << "(Total number of TX chirps will be num_pulses + # errors)" << endl; 
   
   cout << "INFO: Number of TX samples: " << num_tx_samps << endl;  //needs to be after chirp and sdr object are both made
   cout << "INFO: Number of RX samples: " << num_rx_samps << endl << endl;  //needs to be after chirp and sdr object are both made
