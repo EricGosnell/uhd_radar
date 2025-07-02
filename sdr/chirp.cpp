@@ -44,3 +44,17 @@ void Chirp::assignVarFromYaml(const string& kYamlFile){
         cout << "WARNING: RX duration is shorter than TX duration.\n";
      }
 }
+
+double Chirp::getTimeOffset() const {return time_offset;}
+void Chirp::setTimeOffset(double value) {time_offset = value;}
+double Chirp::getTxDuration() const {return tx_duration;}
+double Chirp::getRxDuration() const {return rx_duration;}
+double Chirp::getTrOnLead() const {return tr_on_lead;}
+double Chirp::getTrOffTrail() const {return tr_off_trail;}
+double Chirp::getPulseRepInt() const {return pulse_rep_int;}
+double Chirp::getTxLead() const {return tx_lead;}
+int Chirp::getNumPulses() const {return num_pulses;}
+int Chirp::getNumPresums() const {return num_presums;}
+bool Chirp::getPhaseDither() const {return phase_dither;}
+int Chirp::getMaxChirpsPerFile() const {return max_chirps_per_file;}
+void Chirp::setMaxChirpsPerFile(int value) {max_chirps_per_file = value;}

@@ -15,14 +15,14 @@ TEST(assignVarFromYaml, loadsDefault){
     const string kConfigFile = string(CONFIG_DIR) + "/default.yaml";
     Chirp chirp(kConfigFile);
 
-    EXPECT_EQ(chirp.time_offset, 1);
-    EXPECT_EQ(chirp.tx_duration, 20e-6);
-    EXPECT_EQ(chirp.rx_duration, 20e-6);
-    EXPECT_EQ(chirp.tr_on_lead, 0e-6);
-    EXPECT_EQ(chirp.tr_off_trail, 0e-6);
-    EXPECT_EQ(chirp.pulse_rep_int, 200e-6);
-    EXPECT_EQ(chirp.tx_lead, 0e-6);
-    EXPECT_EQ(chirp.num_pulses, 10000);
-    EXPECT_EQ(chirp.num_presums, 1);
-    EXPECT_EQ(chirp.phase_dither, true);
+    EXPECT_EQ(chirp.getTimeOffset(), 1);
+    EXPECT_EQ(chirp.getTxDuration(), 20e-6);
+    EXPECT_EQ(chirp.getRxDuration(), 20e-6);
+    EXPECT_EQ(chirp.getTrOnLead(), 0e-6);
+    EXPECT_EQ(chirp.getTrOffTrail(), 0e-6);
+    EXPECT_EQ(chirp.getPulseRepInt(), 200e-6);
+    EXPECT_EQ(chirp.getTxLead(), 0e-6);
+    EXPECT_EQ(chirp.getNumPulses(), 10000);
+    EXPECT_EQ(chirp.getNumPresums(), 1);
+    EXPECT_EQ(chirp.getPhaseDither(), true);
 }
