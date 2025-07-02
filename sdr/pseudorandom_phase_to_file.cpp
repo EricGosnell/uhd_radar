@@ -1,9 +1,5 @@
-#include <iostream>
 #include <fstream>
-#include <vector>
 #include "pseudorandom_phase.hpp"
-
-using namespace std;
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {

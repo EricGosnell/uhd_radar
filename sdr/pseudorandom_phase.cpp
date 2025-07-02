@@ -1,8 +1,4 @@
-#include <random>
 #include "pseudorandom_phase.hpp"
-
-using namespace std;
-
 
 // Return a single float generated from random_generator
 float get_next_phase(bool transmit){

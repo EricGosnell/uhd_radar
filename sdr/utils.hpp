@@ -2,8 +2,8 @@
 
 #ifndef UTILS_HPP
 #define UTILS_HPP
-
-#include <string>
+#include <boost/filesystem.hpp>
+#include "common.hpp"
 
  // Change filename, e.g. from usrp_samples.dat to usrp_samples.00.dat,
  // if multiple filenames should be generated

@@ -1,12 +1,5 @@
 // Created 10/22/2021
-
-#include <uhd/usrp/multi_usrp.hpp>
-#include <thread>
-#include "yaml-cpp/yaml.h"
 #include "rf_settings.hpp"
-
-using namespace std;
-using namespace uhd;
 
 /**
  * Set USRP RF parameters for a single channel of operation (one
