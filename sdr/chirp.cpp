@@ -46,7 +46,6 @@ void Chirp::assignVarFromYaml(const string& kYamlFile){
 }
 
 double Chirp::getTimeOffset() const {return time_offset;}
-void Chirp::setTimeOffset(double value) {time_offset = value;}
 double Chirp::getTxDuration() const {return tx_duration;}
 double Chirp::getRxDuration() const {return rx_duration;}
 double Chirp::getTrOnLead() const {return tr_on_lead;}
@@ -57,4 +56,16 @@ int Chirp::getNumPulses() const {return num_pulses;}
 int Chirp::getNumPresums() const {return num_presums;}
 bool Chirp::getPhaseDither() const {return phase_dither;}
 int Chirp::getMaxChirpsPerFile() const {return max_chirps_per_file;}
-void Chirp::setMaxChirpsPerFile(int value) {max_chirps_per_file = value;}
+
+void Chirp::setTimeOffset(double value) {
+    if (value < 0.0) {
+        throw invalid_argument("Time offset [s] must be greater than 0.");
+    }
+    time_offset = value;
+}
+void Chirp::setMaxChirpsPerFile(int value) {
+    if (value == 0 || value < -1) {
+        throw invalid_argument("max_chirps_per_file value must be greater than 0 or equal to -1.");
+    }
+    max_chirps_per_file = value;
+}
