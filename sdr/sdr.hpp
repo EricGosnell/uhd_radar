@@ -53,9 +53,12 @@ class Sdr {
     
 
     //functions
-    void loadConfigFromYaml(const string& kYamlFile);
     void createUsrp();
     void setupUsrp();
+
+
+  private:
+    void loadConfigFromYaml(const string& kYamlFile);
     void check10MhzLock();
     void gpsLockAndTime();
     void checkTime(time_spec_t& gps_time);
