@@ -334,6 +334,9 @@ void Sdr::refLoLockDetect(){
     }
   }
 }
+    }
+  }
+}
 /*** @brief Sets up GPIO pins for the USRP device
  * 
  * Configures the GPIO pins for the USRP device based on YAML configuration file. 
