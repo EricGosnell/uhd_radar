@@ -17,8 +17,14 @@ Chirp::Chirp(const string& kYamlFile){
  * reads in paramaters from the YAML file in the config/ folder and assigns paramaters to variables in Chirp class
  * @param kYamlFile Path to the YAML configuration file (config/)
  */
-void Chirp::assignVarFromYaml(const string& kYamlFile){
-    YAML::Node config = YAML::LoadFile(kYamlFile);
+tl::expected<void, std::string> Chirp::assignVarFromYaml(const::std string& kYamlFile){
+     YAML::Node config;
+  try{
+    config = YAML::LoadFile(kYamlFile);
+  }catch (const YAML::Exception& e){
+    return tl::unexpected("Chirp YAML file did not load correctly");
+  }
+    
     YAML::Node chirp = config["CHIRP"];
 
     time_offset = chirp["time_offset"].as<double>();
@@ -43,4 +49,6 @@ void Chirp::assignVarFromYaml(const string& kYamlFile){
      if (config["CHIRP"]["rx_duration"].as<double>() < tx_duration) {
         cout << "WARNING: RX duration is shorter than TX duration.\n";
      }
+
+     return {};
 }

@@ -26,7 +26,7 @@ tl::expected<void, std::string> Sdr::loadConfigFromYaml(const std::string& kYaml
   try{
     config = YAML::LoadFile(kYamlFile);
   }catch (const YAML::Exception& e){
-    return tl::unexpected("Yaml file did not load correctly");
+    return tl::unexpected("SDR YAML file did not load correctly");
   }
  
   // Device
@@ -239,7 +239,7 @@ void Sdr::checkTime(time_spec_t& gps_time){
               << (boost::format("%0.9f") % gps_time.get_real_secs()) << std::endl;
     if (gps_time.get_real_secs() == time_last_pps.get_real_secs())
         cout << endl
-                  << "SUCCESS: USRP time synchronized to GPS time" << endl
+                  << "SUCCESS: USRP time synchronized to GPS time" << endl //should this be delt with more thooughly, ideally it shoudl alwau be time synchronized with gps
                   << endl;
     else
         std::cerr << endl
@@ -259,7 +259,7 @@ void Sdr::detectChannels(){
   for (size_t ch = 0; ch < tx_channel_strings.size(); ch++) {
     size_t chan = stoi(tx_channel_strings[ch]);
     if (chan >= usrp->get_tx_num_channels()) {
-      throw std::runtime_error("Invalid TX channel(s) specified.");
+      throw std::runtime_error("Invalid TX channel(s) specified."); //TODO: change this line to tl::expected format
     } else
       tx_channel_nums.push_back(stoi(tx_channel_strings[ch]));
   }
@@ -267,7 +267,7 @@ void Sdr::detectChannels(){
   for (size_t ch = 0; ch < rx_channel_strings.size(); ch++) {
     size_t chan = stoi(rx_channel_strings[ch]);
     if (chan >= usrp->get_rx_num_channels()) {
-      throw std::runtime_error("Invalid RX channel(s) specified.");
+      throw std::runtime_error("Invalid RX channel(s) specified.");  //TODO: change this line to tl::expected format
     } else
       rx_channel_nums.push_back(stoi(rx_channel_strings[ch]));
   }
@@ -288,11 +288,11 @@ void Sdr::setRFParams(){
     set_rf_params_single(usrp, rf0, rx_channel_nums, tx_channel_nums);
   } else if (tx_channel_nums.size() == 2) {
     if (!transmit) {
-      throw std::runtime_error("Non-transmit mode not supported by set_rf_params_multi");
+      throw std::runtime_error("Non-transmit mode not supported by set_rf_params_multi");  //TODO: change this line to tl::expected format
     }
     set_rf_params_multi(usrp, rf0, rf1, rx_channel_nums, tx_channel_nums);
   } else {
-    throw std::runtime_error("Number of channels requested not supported");
+    throw std::runtime_error("Number of channels requested not supported");  //TODO: change this line to tl::expected format
   }
 
   // allow for some setup time
@@ -320,10 +320,7 @@ void Sdr::refLoLockDetect(){
         sensor_value_t lo_locked = usrp->get_tx_sensor("lo_locked", ch);
         cout << boost::format("Checking TX: %s ...") % lo_locked.to_pp_string()
             << endl;
-        UHD_ASSERT_THROW(lo_locked.to_bool());
-      }
-    }
-  }
+        UHD_ASSERT_THROW(lo_locked.to_bool()); //good if not in a funcion that returns tl::expected, but should eventally be changed to tl::expected format
 
   for (size_t ch = 0; ch < rx_channel_nums.size(); ch++) {
     // Check LO locked
@@ -333,7 +330,7 @@ void Sdr::refLoLockDetect(){
       sensor_value_t lo_locked = usrp->get_rx_sensor("lo_locked", ch);
       cout << boost::format("Checking RX: %s ...") % lo_locked.to_pp_string()
            << endl;
-      UHD_ASSERT_THROW(lo_locked.to_bool());
+      UHD_ASSERT_THROW(lo_locked.to_bool()); //good if not in a funcion that returns tl::expected, but should eventally be changed to tl::expected format
     }
   }
 }
