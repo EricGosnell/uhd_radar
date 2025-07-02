@@ -15,14 +15,14 @@ TEST(loadConfigFromYaml, LoadsDefault){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
     //DEVICE
-    EXPECT_EQ(sdr.device_args, "num_recv_frames=700,num_send_frames=700,recv_frame_size=11000,send_frame_size=11000");
-    EXPECT_EQ(sdr.subdev, "A:A");
-    EXPECT_EQ(sdr.clk_ref, "internal");
-    EXPECT_EQ(sdr.clk_rate, 56e6);
-    EXPECT_EQ(sdr.tx_channels, "0");
-    EXPECT_EQ(sdr.rx_channels, "0");
-    EXPECT_EQ(sdr.cpu_format, "fc32");
-    EXPECT_EQ(sdr.otw_format, "sc12");
+    EXPECT_EQ(sdr.getDeviceArgs(), "num_recv_frames=700,num_send_frames=700,recv_frame_size=11000,send_frame_size=11000");
+    EXPECT_EQ(sdr.getSubdev(), "A:A");
+    EXPECT_EQ(sdr.getClkRef(), "internal");
+    EXPECT_EQ(sdr.getClkRate(), 56e6);
+    EXPECT_EQ(sdr.getTxChannels(), "0");
+    EXPECT_EQ(sdr.getRxChannels(), "0");
+    EXPECT_EQ(sdr.getCpuFormat(), "fc32");
+    EXPECT_EQ(sdr.getOtwFormat(), "sc12");
 
     //GPIO
     EXPECT_EQ(sdr.pwr_amp_pin, -3);

@@ -405,3 +405,13 @@ void Sdr::setupRx(){
 
   cout << "INFO: rx_stream get_max_num_samps: " << rx_stream->get_max_num_samps() << endl;
 }
+
+// DEVICE
+string Sdr::getDeviceArgs() const {return device_args;}
+string Sdr::getSubdev() const {return subdev;}
+string Sdr::getClkRef() const {return clk_ref;}
+double Sdr::getClkRate() const {return clk_rate;}
+string Sdr::getTxChannels() const {return tx_channels;}
+string Sdr::getRxChannels() const {return rx_channels;}
+string Sdr::getCpuFormat() const {return cpu_format;}
+string Sdr::getOtwFormat() const {return otw_format;}

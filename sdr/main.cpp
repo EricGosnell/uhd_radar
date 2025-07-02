@@ -177,7 +177,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   string gps_data;
 
-  if (sdr.cpu_format != "fc32") {
+  if (sdr.getCpuFormat() != "fc32") {
     cout << "Only cpu_format 'fc32' is supported for now." << endl;
     // This is because we actually need buff and sample_sum to have the correct
     // data type to facilitate phase modulation and summing. In the future, this could be
@@ -187,7 +187,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   }
 
   // receive buffer
-  size_t bytes_per_sample = convert::get_bytes_per_item(sdr.cpu_format);
+  size_t bytes_per_sample = convert::get_bytes_per_item(sdr.getCpuFormat());
   vector<complex<float>> sample_sum(num_rx_samps, 0); // Sum error-free RX pulses into this vector
 
   vector<complex<float>> buff(num_rx_samps); // Buffer sized for one pulse at a time
@@ -266,7 +266,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     }
 
     // get gps data
-    /*if (sdr.clk_ref == "gpsdo" && ((pulses_received % 100000) == 0)) {
+    /*if (sdr.getClkRef() == "gpsdo" && ((pulses_received % 100000) == 0)) {
       gps_data = usrp->get_mboard_sensor("gps_gprmc").to_pp_string();
       //cout << gps_data << endl;
     }*/
@@ -280,7 +280,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     }
 
     // write gps string to file
-    /*if (sdr.clk_ref == "gpsdo") {
+    /*if (sdr.getClkRef() == "gpsdo") {
       boost::asio::async_write(gps_stream, boost::asio::buffer(gps_data + "\n"), gps_asio_handler);
     }*/
 
@@ -349,7 +349,7 @@ void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream,
 
   // Transmit buffers
 
-  if (sdr.cpu_format != "fc32") {
+  if (sdr.getCpuFormat() != "fc32") {
     cout << "Only cpu_format 'fc32' is supported for now." << endl;
     // This is because we actually need chirp_unmodulated to have the correct
     // data type to facilitate phase modulation. In the future, this could be
@@ -361,7 +361,7 @@ void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream,
   vector<std::complex<float>> tx_buff(num_tx_samps); // Ready-to-transmit samples
   vector<std::complex<float>> chirp_unmodulated(num_tx_samps); // Chirp samples before any phase modulation
 
-  infile.read((char *)&chirp_unmodulated.front(), num_tx_samps * convert::get_bytes_per_item(sdr.cpu_format));
+  infile.read((char *)&chirp_unmodulated.front(), num_tx_samps * convert::get_bytes_per_item(sdr.getCpuFormat()));
   tx_buff = chirp_unmodulated;
 
   // Transmit metadata structure

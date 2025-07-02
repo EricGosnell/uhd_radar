@@ -8,15 +8,6 @@
 class Sdr {
   public:
     Sdr(const string& kYamlFile);
-    // DEVICE
-    string device_args;
-    string subdev;
-    string clk_ref;
-    double clk_rate;
-    string tx_channels;
-    string rx_channels;
-    string cpu_format;
-    string otw_format;
 
     // GPIO
     int pwr_amp_pin;
@@ -56,6 +47,15 @@ class Sdr {
     void createUsrp();
     void setupUsrp();
 
+    // DEVICE
+    string getDeviceArgs() const;
+    string getSubdev() const;
+    string getClkRef() const;
+    double getClkRate() const;
+    string getTxChannels() const;
+    string getRxChannels() const;
+    string getCpuFormat() const;
+    string getOtwFormat() const;
 
   private:
     void loadConfigFromYaml(const string& kYamlFile);
@@ -68,6 +68,17 @@ class Sdr {
     void setupGpio();
     void setupTx();
     void setupRx();
+
+    // DEVICE
+    string device_args;
+    string subdev;
+    string clk_ref;
+    double clk_rate;
+    string tx_channels;
+    string rx_channels;
+    string cpu_format;
+    string otw_format;
+
 };
 
 #endif
