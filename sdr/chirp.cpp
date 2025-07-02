@@ -17,7 +17,7 @@ Chirp::Chirp(const string& kYamlFile){
  * reads in paramaters from the YAML file in the config/ folder and assigns paramaters to variables in Chirp class
  * @param kYamlFile Path to the YAML configuration file (config/)
  */
-tl::expected<void, std::string> Chirp::assignVarFromYaml(const::std string& kYamlFile){
+tl::expected<void, std::string> Chirp::assignVarFromYaml(const std::string& kYamlFile){
      YAML::Node config;
   try{
     config = YAML::LoadFile(kYamlFile);
