@@ -21,9 +21,14 @@ Sdr::Sdr(const string& kYamlFile) {
 *
 * @param kYamlFile Path to the YAML configuration file (config/)
 */
-void Sdr::loadConfigFromYaml(const string& kYamlFile) {
-  YAML::Node config = YAML::LoadFile(kYamlFile);
-
+tl::expected<void, std::string> Sdr::loadConfigFromYaml(const std::string& kYamlFile) {
+  YAML::Node config;
+  try{
+    config = YAML::LoadFile(kYamlFile);
+  }catch (const YAML::Exception& e){
+    return tl::unexpected("Yaml file did not load correctly");
+  }
+ 
   // Device
   YAML::Node dev_params = config["DEVICE"];
   subdev = dev_params["subdev"].as<string>();
@@ -80,6 +85,8 @@ void Sdr::loadConfigFromYaml(const string& kYamlFile) {
   if (bw < config["GENERATE"]["chirp_bandwidth"].as<double>() && bw != 0){
     cout << "WARNING: RX bandwidth is narrower than the chirp bandwidth.\n";
   }
+
+  return {};
 }
 
 /**

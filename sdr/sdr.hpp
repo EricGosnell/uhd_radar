@@ -4,6 +4,7 @@
 #include "yaml-cpp/yaml.h"
 #include "rf_settings.hpp"
 #include "common.hpp"
+#include "tl/expected.hpp"
 
 class Sdr {
   public:
@@ -53,7 +54,7 @@ class Sdr {
     
 
     //functions
-    void loadConfigFromYaml(const string& kYamlFile);
+    tl::expected<void, string> loadConfigFromYaml(const string& kYamlFile);
     void createUsrp();
     void setupUsrp();
     void check10MhzLock();

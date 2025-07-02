@@ -21,7 +21,7 @@ GENERATE:
                                          #   symmetric zero padding)    
     out_file: &ch_sent "data/chirp.bin"  # The name of the output binary file
                                          #   containing the pulse samples
-    show_plot: False                     # Display a time-domain plot of the
+    show_plot: False                    # Display a time-domain plot of the
                                          #   generated chirp
 
 ### DEVICE CONNECTION AND DATA TRANSFER
