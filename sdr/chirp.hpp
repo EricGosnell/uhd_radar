@@ -2,7 +2,6 @@
 #define CHIRP_HPP
 #include "yaml-cpp/yaml.h"
 #include "common.hpp"
-#include "tl/expected.hpp"
 
 class Chirp{
 
@@ -22,7 +21,7 @@ public:
     bool phase_dither;
 
 private: 
-    tl::expected<void,string> assignVarFromYaml(const string& kYamlFile);
+    void assignVarFromYaml(const string& kYamlFile);
 };
 
 #endif

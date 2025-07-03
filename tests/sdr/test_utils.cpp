@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 #include "../../sdr/utils.hpp"
+using namespace std;
 
 // Test that the base filename is returned when only one filename is to be generated
 TEST(GenerateOutFilename, OneFilename) {
     EXPECT_EQ(generate_out_filename("usrp_samples.dat", 1, 0), "usrp_samples.dat");
+    EXPECT_NE(generate_out_filename("usrp_samples.dat", 0,1), "usrp_samples.dat");
 }
 
 // Test zero padding of the filename when two names are being generated

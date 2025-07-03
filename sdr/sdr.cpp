@@ -21,13 +21,8 @@ Sdr::Sdr(const string& kYamlFile) {
 *
 * @param kYamlFile Path to the YAML configuration file (config/)
 */
-tl::expected<void, std::string> Sdr::loadConfigFromYaml(const std::string& kYamlFile) {
-  YAML::Node config;
-  try{
-    config = YAML::LoadFile(kYamlFile);
-  }catch (const YAML::Exception& e){
-    return tl::unexpected("SDR YAML file did not load correctly");
-  }
+void Sdr::loadConfigFromYaml(const string& kYamlFile) {
+  YAML::Node config = YAML::LoadFile(kYamlFile);
  
   // Device
   YAML::Node dev_params = config["DEVICE"];
@@ -85,8 +80,6 @@ tl::expected<void, std::string> Sdr::loadConfigFromYaml(const std::string& kYaml
   if (bw < config["GENERATE"]["chirp_bandwidth"].as<double>() && bw != 0){
     cout << "WARNING: RX bandwidth is narrower than the chirp bandwidth.\n";
   }
-
-  return {};
 }
 
 /**
@@ -229,7 +222,10 @@ void Sdr::gpsLockAndTime(){
  * synchronization is indicated. If it doesn't match, an error message is printed.
  */
 void Sdr::checkTime(time_spec_t& gps_time){
- gps_time = time_spec_t(
+  if(gps_time.get_full_secs() == 0 && gps_time.get_frac_secs() == 0.0){
+    throw std::invalid_argument("gps_time is not valid");
+  }
+  gps_time = time_spec_t(
         int64_t(usrp->get_mboard_sensor("gps_time", 0).to_int()));
     time_spec_t time_last_pps = usrp->get_time_last_pps(0);
     cout << "USRP time: "
@@ -259,7 +255,7 @@ void Sdr::detectChannels(){
   for (size_t ch = 0; ch < tx_channel_strings.size(); ch++) {
     size_t chan = stoi(tx_channel_strings[ch]);
     if (chan >= usrp->get_tx_num_channels()) {
-      throw std::runtime_error("Invalid TX channel(s) specified."); //TODO: change this line to tl::expected format
+      throw std::runtime_error("Invalid TX channel(s) specified.");
     } else
       tx_channel_nums.push_back(stoi(tx_channel_strings[ch]));
   }
@@ -267,7 +263,7 @@ void Sdr::detectChannels(){
   for (size_t ch = 0; ch < rx_channel_strings.size(); ch++) {
     size_t chan = stoi(rx_channel_strings[ch]);
     if (chan >= usrp->get_rx_num_channels()) {
-      throw std::runtime_error("Invalid RX channel(s) specified.");  //TODO: change this line to tl::expected format
+      throw std::runtime_error("Invalid RX channel(s) specified.");
     } else
       rx_channel_nums.push_back(stoi(rx_channel_strings[ch]));
   }

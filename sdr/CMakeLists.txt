@@ -4,10 +4,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-if(POLICY CMP0135)
-  cmake_policy(SET CMP0135 NEW)
-endif()
-
 cmake_minimum_required(VERSION 3.5.1)
 project(INIT_USRP CXX)
 
@@ -67,15 +63,6 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-FetchContent_Declare(
-  expected
-  GIT_REPOSITORY https://github.com/TartanLlama/expected.git
-  GIT_TAG        master
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-set(EXPECTED_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(expected)
-
 ### Make the executables #######################################################
 # Radar executable
 add_executable(radar main.cpp rf_settings.cpp rf_settings.hpp utils.cpp utils.hpp pseudorandom_phase.cpp pseudorandom_phase.hpp chirp.hpp chirp.cpp sdr.cpp sdr.hpp common.hpp)
@@ -91,7 +78,7 @@ set(CMAKE_BUILD_TYPE "Release")
 # anything else we need (in this case, some Boost libraries):
 if(NOT UHD_USE_STATIC_LIBS)
     message(STATUS "Linking against shared UHD library.")
-    target_link_libraries(radar ${UHD_LIBRARIES} ${Boost_LIBRARIES} ${YAML_CPP_LIBRARIES} tl::expected)
+    target_link_libraries(radar ${UHD_LIBRARIES} ${Boost_LIBRARIES} ${YAML_CPP_LIBRARIES})
 # Shared library case: All we need to do is link against the library, and
 # anything else we need (in this case, some Boost libraries):
 else(NOT UHD_USE_STATIC_LIBS)
