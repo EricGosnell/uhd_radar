@@ -4,6 +4,18 @@
 
 using namespace std;
 
+class SdrHwTest{
+    public:
+    void revealCheck10MhzLock(Sdr& sdr){sdr.check10MhzLock();}
+    void revealGpsLock(Sdr& sdr){sdr.gpsLock();}
+    void revealCheckAndSetTime(Sdr& sdr){sdr.checkAndSetTime();}
+    void revealDetectChannels(Sdr& sdr){sdr.detectChannels();}
+    void revealSetRFParams(Sdr& sdr){sdr.setRFParams();}
+    void revealRefLoLockDetect(Sdr& sdr){sdr.refLoLockDetect();}
+    void revealSetupGpio(Sdr& sdr){sdr.setupGpio();}
+    void revealSetupTx(Sdr& sdr){sdr.setupTx();}
+    void revealSetupRx(Sdr& sdr){sdr.setupRx();}
+};
 /**
  * @brief tests that the construction of sdr class reads from yaml correctly
  * 
@@ -55,4 +67,17 @@ TEST(GetterMethods, UntestedInLoadsDefault){
     EXPECT_EQ(sdr.getAtrMasks(), 536870912);
     EXPECT_EQ(sdr.getAtrControl(), 536870912);
     EXPECT_EQ(sdr.getGpioDdr(), 536870912);
+}
+
+
+//hardware testing for usrp
+
+TEST(gpsLock, checkParams){
+    const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
+    Sdr sdr(kYamlFile);
+    SdrHwTest test;
+
+    test.revealGpsLock(sdr);
+    EXPECT_TRUE(sdr.getUsrp()->get_mboard_sensor("gps_locked", 0).to_bool());
+
 }
