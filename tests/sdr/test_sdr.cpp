@@ -79,5 +79,4 @@ TEST(gpsLock, checkParams){
 
     test.revealGpsLock(sdr);
     EXPECT_TRUE(sdr.getUsrp()->get_mboard_sensor("gps_locked", 0).to_bool());
-
 }

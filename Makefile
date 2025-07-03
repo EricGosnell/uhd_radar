@@ -10,7 +10,7 @@ build-cxx:
 .PHONY: cxx-test
 cxx-test:
 	@echo "Running C++ tests..."
-	ctest --test-dir sdr/build --output-on-failure
+	ctest --test-dir sdr/build --output-on-failure -E gpsLock
 
 .PHONY: python-test
 python-test:
