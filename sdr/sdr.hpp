@@ -67,13 +67,15 @@ class Sdr {
 
     // DEVICE
     string device_args;
-    string subdev;
-    string clk_ref;
-    double clk_rate;
-    string tx_channels;
-    string rx_channels;
-    string cpu_format;
-    string otw_format;
+    string subdev;      // Active SDR submodules. See https://files.ettus.com/manual/page_configuration.html
+    string clk_ref;     // Clock reference source. See https://files.ettus.com/manual/page_sync.html
+    double clk_rate;    // [Hz] SDR main clock frequency
+    string tx_channels; // List of TX channels to use (command separated)
+    string rx_channels; // List of RX channels to use (command separated) (must be the same length as tx_channels)
+    string cpu_format;  // CPU-side sample format. See https://files.ettus.com/manual/structuhd_1_1stream__args__t.html#a602a64b4937a85dba84e7f724387e252
+                        // Supported options: "fc32", "sc16", "sc8"
+    string otw_format;  // On the wire format. See https://files.ettus.com/manual/structuhd_1_1stream__args__t.html#a0ba0e946d2f83f7ac085f4f4e2ce9578
+                        // (Any format supported.)
 
     // GPIO
     int pwr_amp_pin;        // Which GPIO pin to use for external power amplifier control (set to -1 if not using)
