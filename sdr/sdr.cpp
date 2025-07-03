@@ -424,3 +424,16 @@ uint32_t Sdr::getAtrMasks() const {return ATR_MASKS;}
 uint32_t Sdr::getAtrControl() const {return ATR_CONTROL;}
 uint32_t Sdr::getGpioDdr() const {return GPIO_DDR;}
 int Sdr::getRefOutInt() const {return ref_out_int;}
+
+// RF
+YAML::Node Sdr::getRf0() const {return rf0;}
+YAML::Node Sdr::getRf1() const {return rf1;}
+double Sdr::getRxRate() const {return rx_rate;}
+double Sdr::getTxRate() const {return tx_rate;}
+double Sdr::getFreq() const {return freq;}
+double Sdr::getRxGain() const {return rx_gain;}
+double Sdr::getTxGain() const {return tx_gain;}
+double Sdr::getBw() const {return bw;}
+string Sdr::getRxAnt() const {return rx_ant;}
+string Sdr::getTxAnt() const {return tx_ant;}
+bool Sdr::getTransmit() const {return transmit;}

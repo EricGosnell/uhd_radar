@@ -9,19 +9,6 @@ class Sdr {
   public:
     Sdr(const string& kYamlFile);
 
-    // RF
-    YAML::Node rf0;
-    YAML::Node rf1;
-    double rx_rate;
-    double tx_rate;
-    double freq;
-    double rx_gain;
-    double tx_gain;
-    double bw;
-    string tx_ant;
-    string rx_ant;
-    bool transmit;
-
     //USRP
     usrp::multi_usrp::sptr usrp;
     tx_streamer::sptr tx_stream;
@@ -57,6 +44,19 @@ class Sdr {
     uint32_t getGpioDdr() const;
     int getRefOutInt() const;
 
+    // RF
+    YAML::Node getRf0() const;
+    YAML::Node getRf1() const;
+    double getRxRate() const;
+    double getTxRate() const;
+    double getFreq() const;
+    double getRxGain() const;
+    double getTxGain() const;
+    double getBw() const;
+    string getRxAnt() const;
+    string getTxAnt() const;
+    bool getTransmit() const;
+
   private:
     void loadConfigFromYaml(const string& kYamlFile);
     void check10MhzLock();
@@ -89,6 +89,18 @@ class Sdr {
     int ref_out_int;        // Turns the 10 MHz reference out signal on (1) or off (0)
                             // set to (-1) if SDR does not support
 
+    // RF
+    YAML::Node rf0; // RF FRONTEND 0
+    YAML::Node rf1; // RF FRONTEND 1 (not supported on b205mini)
+    double rx_rate; // [Hz] RX Sample Rate
+    double tx_rate; // [Hz] TX Sample Rate
+    double freq;    // [Hz] Center Frequency (mixer frequency)
+    double rx_gain; // [dB] RX Gain
+    double tx_gain; // [dB] TX Gain - 60.8 is about -10 dBm output on the b205mini
+    double bw;      // [Hz] Configurable filter bandwidth
+    string rx_ant;  // Port to be used for RX
+    string tx_ant;  // Port to be used for TX
+    bool transmit;  // "true" (or not set) for normal operation, set to "false" to completely disable transmit
 
 };
 

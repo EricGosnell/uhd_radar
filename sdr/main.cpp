@@ -91,8 +91,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   // Calculated parameters
 
   tr_off_delay = chirp.getTxDuration() + chirp.getTrOffTrail(); // Time before turning off GPIO
-  num_tx_samps = sdr.tx_rate * chirp.getTxDuration(); // Total samples to transmit per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
-  num_rx_samps = sdr.rx_rate * chirp.getRxDuration(); // Total samples to receive per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
+  num_tx_samps = sdr.getTxRate() * chirp.getTxDuration(); // Total samples to transmit per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
+  num_rx_samps = sdr.getRxRate() * chirp.getRxDuration(); // Total samples to receive per chirp // TODO: Should use ["GENERATE"]["sample_rate"] instead!
 
 
   /** Thread, interrupt setup **/
@@ -125,7 +125,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   boost::thread_group transmit_thread;
   transmit_thread.create_thread(boost::bind(&transmit_worker, sdr.tx_stream, sdr.rx_stream, boost::ref(chirp), boost::ref(sdr)));
   
-  if (!sdr.transmit) {
+  if (!sdr.getTransmit()) {
     cout << "WARNING: Transmit disabled by configuration file!" << endl;
   }
 
@@ -420,7 +420,7 @@ void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream,
     rx_time = chirp.getTimeOffset() + (chirp.getPulseRepInt() * pulses_scheduled); // TODO: How do we track timing
     tx_md.time_spec = time_spec_t(rx_time - chirp.getTxLead());
     
-    if (sdr.transmit) {
+    if (sdr.getTransmit()) {
       n_samp_tx = tx_stream->send(&tx_buff.front(), num_tx_samps, tx_md, 60); // TODO: Think about timeout
     }
 

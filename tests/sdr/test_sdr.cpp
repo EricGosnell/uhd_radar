@@ -30,15 +30,15 @@ TEST(loadConfigFromYaml, LoadsDefault){
     EXPECT_EQ(sdr.getRefOutInt(), -1);
 
     //RF
-    EXPECT_EQ(sdr.rx_rate, 56e6);
-    EXPECT_EQ(sdr.tx_rate, 56e6);
-    EXPECT_EQ(sdr.freq, 450e6);
-    EXPECT_EQ(sdr.rx_gain, 10);
-    EXPECT_EQ(sdr.tx_gain, 10);
-    EXPECT_EQ(sdr.bw, 56e6);
-    EXPECT_EQ(sdr.tx_ant, "TX/RX");
-    EXPECT_EQ(sdr.rx_ant, "RX2");
-    EXPECT_EQ(sdr.transmit, true);
+    EXPECT_EQ(sdr.getRxRate(), 56e6);
+    EXPECT_EQ(sdr.getTxRate(), 56e6);
+    EXPECT_EQ(sdr.getFreq(), 450e6);
+    EXPECT_EQ(sdr.getRxGain(), 10);
+    EXPECT_EQ(sdr.getTxGain(), 10);
+    EXPECT_EQ(sdr.getBw(), 56e6);
+    EXPECT_EQ(sdr.getTxAnt(), "TX/RX");
+    EXPECT_EQ(sdr.getRxAnt(), "RX2");
+    EXPECT_EQ(sdr.getTransmit(), true);
 }
 
 /**
