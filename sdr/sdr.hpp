@@ -9,19 +9,6 @@ class Sdr {
   public:
     Sdr(const string& kYamlFile);
 
-    //USRP
-    usrp::multi_usrp::sptr usrp;
-    tx_streamer::sptr tx_stream;
-    rx_streamer::sptr rx_stream;
-
-    vector<string> tx_channel_strings;
-    vector<size_t> tx_channel_nums;
-
-    vector<string> rx_channel_strings;
-    vector<size_t> rx_channel_nums;
-    
-
-    //functions
     void createUsrp();
     void setupUsrp();
 
@@ -56,6 +43,15 @@ class Sdr {
     string getRxAnt() const;
     string getTxAnt() const;
     bool getTransmit() const;
+
+    // USRP
+    usrp::multi_usrp::sptr getUsrp() const;
+    tx_streamer::sptr getTxStream() const;
+    rx_streamer::sptr getRxStream() const;
+    vector<string>& getTxChannelStrings();
+    vector<size_t>& getTxChannelNums();
+    vector<string>& getRxChannelStrings();
+    vector<size_t>& getRxChannelNums();
 
   private:
     void loadConfigFromYaml(const string& kYamlFile);
@@ -101,6 +97,15 @@ class Sdr {
     string rx_ant;  // Port to be used for RX
     string tx_ant;  // Port to be used for TX
     bool transmit;  // "true" (or not set) for normal operation, set to "false" to completely disable transmit
+
+    // USRP
+    usrp::multi_usrp::sptr usrp;
+    tx_streamer::sptr tx_stream;
+    rx_streamer::sptr rx_stream;
+    vector<string> tx_channel_strings;
+    vector<size_t> tx_channel_nums;
+    vector<string> rx_channel_strings;
+    vector<size_t> rx_channel_nums;
 
 };
 

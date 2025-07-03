@@ -119,11 +119,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
  
   // update the offset time for start of streaming to be offset from the current usrp time
-  chirp.setTimeOffset(chirp.getTimeOffset() + time_spec_t(sdr.usrp->get_time_now()).get_real_secs());  //needs to be after chirp and sdr object are both made
+  chirp.setTimeOffset(chirp.getTimeOffset() + time_spec_t(sdr.getUsrp()->get_time_now()).get_real_secs());  //needs to be after chirp and sdr object are both made
 
   /*** SPAWN THE TX THREAD ***/
   boost::thread_group transmit_thread;
-  transmit_thread.create_thread(boost::bind(&transmit_worker, sdr.tx_stream, sdr.rx_stream, boost::ref(chirp), boost::ref(sdr)));
+  transmit_thread.create_thread(boost::bind(&transmit_worker, sdr.getTxStream(), sdr.getRxStream(), boost::ref(chirp), boost::ref(sdr)));
   
   if (!sdr.getTransmit()) {
     cout << "WARNING: Transmit disabled by configuration file!" << endl;
@@ -192,7 +192,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   vector<complex<float>> buff(num_rx_samps); // Buffer sized for one pulse at a time
   vector<void *> buffs;
-  for (size_t ch = 0; ch < sdr.rx_stream->get_num_channels(); ch++) {
+  for (size_t ch = 0; ch < sdr.getRxStream()->get_num_channels(); ch++) {
     buffs.push_back(&buff.front()); // TODO: I don't think this actually works for num_channels > 1
   }
   size_t n_samps_in_rx_buff;
@@ -205,7 +205,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   while ((chirp.getNumPulses() < 0) || (last_pulse_num_written < chirp.getNumPulses())) {
 
-    n_samps_in_rx_buff = sdr.rx_stream->recv(buffs, num_rx_samps, rx_md, 60.0, false); // TODO: Think about timeout
+    n_samps_in_rx_buff = sdr.getRxStream()->recv(buffs, num_rx_samps, rx_md, 60.0, false); // TODO: Think about timeout
 
     if (chirp.getPhaseDither()) {
       inversion_phase = -1.0 * get_next_phase(false); // Get next phase from the generator each time to keep in sequence with TX
@@ -267,7 +267,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
     // get gps data
     /*if (sdr.getClkRef() == "gpsdo" && ((pulses_received % 100000) == 0)) {
-      gps_data = usrp->get_mboard_sensor("gps_gprmc").to_pp_string();
+      gps_data = sdr.getUsrp()->get_mboard_sensor("gps_gprmc").to_pp_string();
       //cout << gps_data << endl;
     }*/
 

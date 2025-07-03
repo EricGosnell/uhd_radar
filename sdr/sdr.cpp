@@ -437,3 +437,12 @@ double Sdr::getBw() const {return bw;}
 string Sdr::getRxAnt() const {return rx_ant;}
 string Sdr::getTxAnt() const {return tx_ant;}
 bool Sdr::getTransmit() const {return transmit;}
+
+// USRP
+usrp::multi_usrp::sptr Sdr::getUsrp() const {return usrp;}
+tx_streamer::sptr Sdr::getTxStream() const {return tx_stream;}
+rx_streamer::sptr Sdr::getRxStream() const {return rx_stream;}
+vector<string>& Sdr::getTxChannelStrings() {return tx_channel_strings;}
+vector<size_t>& Sdr::getTxChannelNums() {return tx_channel_nums;}
+vector<string>& Sdr::getRxChannelStrings() {return rx_channel_strings;}
+vector<size_t>& Sdr::getRxChannelNums() {return rx_channel_nums;}
