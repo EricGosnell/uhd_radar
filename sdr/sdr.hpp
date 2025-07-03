@@ -9,15 +9,6 @@ class Sdr {
   public:
     Sdr(const string& kYamlFile);
 
-    // GPIO
-    int pwr_amp_pin;
-    string gpio_bank;
-    uint32_t AMP_GPIO_MASK;
-    uint32_t ATR_MASKS;
-    uint32_t ATR_CONTROL;
-    uint32_t GPIO_DDR;
-    int ref_out_int;
-
     // RF
     YAML::Node rf0;
     YAML::Node rf1;
@@ -57,6 +48,15 @@ class Sdr {
     string getCpuFormat() const;
     string getOtwFormat() const;
 
+    // GPIO
+    int getPwrAmpPin() const;
+    string getGpioBank() const;
+    uint32_t getAmpGpioMask() const;
+    uint32_t getAtrMasks() const;
+    uint32_t getAtrControl() const;
+    uint32_t getGpioDdr() const;
+    int getRefOutInt() const;
+
   private:
     void loadConfigFromYaml(const string& kYamlFile);
     void check10MhzLock();
@@ -78,6 +78,17 @@ class Sdr {
     string rx_channels;
     string cpu_format;
     string otw_format;
+
+    // GPIO
+    int pwr_amp_pin;        // Which GPIO pin to use for external power amplifier control (set to -1 if not using)
+    string gpio_bank;       // Which GPIO bank to use (FP0 is front panel and default)
+    uint32_t AMP_GPIO_MASK;
+    uint32_t ATR_MASKS;
+    uint32_t ATR_CONTROL;
+    uint32_t GPIO_DDR;
+    int ref_out_int;        // Turns the 10 MHz reference out signal on (1) or off (0)
+                            // set to (-1) if SDR does not support
+
 
 };
 

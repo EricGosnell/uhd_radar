@@ -25,9 +25,9 @@ TEST(loadConfigFromYaml, LoadsDefault){
     EXPECT_EQ(sdr.getOtwFormat(), "sc12");
 
     //GPIO
-    EXPECT_EQ(sdr.pwr_amp_pin, -3);
-    EXPECT_EQ(sdr.gpio_bank, "FP0");
-    EXPECT_EQ(sdr.ref_out_int, -1);
+    EXPECT_EQ(sdr.getPwrAmpPin(), -3);
+    EXPECT_EQ(sdr.getGpioBank(), "FP0");
+    EXPECT_EQ(sdr.getRefOutInt(), -1);
 
     //RF
     EXPECT_EQ(sdr.rx_rate, 56e6);
@@ -39,4 +39,20 @@ TEST(loadConfigFromYaml, LoadsDefault){
     EXPECT_EQ(sdr.tx_ant, "TX/RX");
     EXPECT_EQ(sdr.rx_ant, "RX2");
     EXPECT_EQ(sdr.transmit, true);
+}
+
+/**
+ * @brief tests GPIO mask getter functions
+ *
+ * these 4 getter methods are not tested with the other getter
+ * methods in Loads Default because they are not directly read from YAML
+ */
+TEST(GetterMethods, UntestedInLoadsDefault){
+    const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
+    Sdr sdr(kYamlFile);
+
+    EXPECT_EQ(sdr.getAmpGpioMask(), 536870912); // 536870912 in 32-bit binary is 00100000000000000000000000000000
+    EXPECT_EQ(sdr.getAtrMasks(), 536870912);
+    EXPECT_EQ(sdr.getAtrControl(), 536870912);
+    EXPECT_EQ(sdr.getGpioDdr(), 536870912);
 }

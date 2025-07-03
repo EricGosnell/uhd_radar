@@ -358,7 +358,7 @@ void Sdr::setupGpio(){
     usrp->set_gpio_attr(gpio_bank, "ATR_XX", AMP_GPIO_MASK, AMP_GPIO_MASK);
   }
 
-  //cout << "sdr.AMP_GPIO_MASK: " << bitset<32>(sdr.AMP_GPIO_MASK) << endl;
+//  cout << "AMP_GPIO_MASK: " << bitset<32>(AMP_GPIO_MASK) << endl;
 
   // turns external ref out port on or off
    if (ref_out_int == 1) {
@@ -415,3 +415,12 @@ string Sdr::getTxChannels() const {return tx_channels;}
 string Sdr::getRxChannels() const {return rx_channels;}
 string Sdr::getCpuFormat() const {return cpu_format;}
 string Sdr::getOtwFormat() const {return otw_format;}
+
+// GPIO
+int Sdr::getPwrAmpPin() const {return pwr_amp_pin;}
+string Sdr::getGpioBank() const {return gpio_bank;}
+uint32_t Sdr::getAmpGpioMask() const {return AMP_GPIO_MASK;}
+uint32_t Sdr::getAtrMasks() const {return ATR_MASKS;}
+uint32_t Sdr::getAtrControl() const {return ATR_CONTROL;}
+uint32_t Sdr::getGpioDdr() const {return GPIO_DDR;}
+int Sdr::getRefOutInt() const {return ref_out_int;}
