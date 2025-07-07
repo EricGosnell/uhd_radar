@@ -68,6 +68,8 @@ To do this, first make sure the functions that are being tested are either publi
 
     -E "<existingSuiteName>|<yourSuiteName>"
 
+Do the same thing as above in the `.github\workflows/unit-tests.yml` file under `name: Run C++ Tests` in the `run:` section after all of the other flags are listed.
+
 This will exclude the hardware tests from running when only the software is run. When running only software tests, run `make software-test`. Then, when hardware is connected, run `make hardware-test` which will run both the software and hardware unit tests.
 
 ###### Example C++ test:
