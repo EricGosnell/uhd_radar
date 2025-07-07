@@ -12,7 +12,7 @@ build-cxx:
 .PHONY: software-cxx-test
 software-cxx-test:
 	@echo "Running C++ software tests..."
-	ctest --test-dir sdr/build --output-on-failure -E "gpsLock|check10MhzLock|checkAndSetTime|detectChannels|setRFParams|refLoLockDetect|setupGpio|setupTx|setupRx"
+	ctest --test-dir sdr/build --output-on-failure -E "gpsLock|check10MhzLock|checkAndSetTime|detectChannels|setRFParams|refLoLockDetect|setupGpio"
 
 .PHONY: python-test
 python-test:

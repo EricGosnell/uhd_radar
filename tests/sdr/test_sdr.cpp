@@ -153,10 +153,3 @@ TEST(setupGpio, checkParams){
     test.revealSetupGpio(sdr);
     EXPECT_NE(sdr.getPwrAmpPin(), -1);
 }
-
-TEST(setupTx, checkParams){}
-
-TEST(setupRx, checkParams){}
-
-
-
