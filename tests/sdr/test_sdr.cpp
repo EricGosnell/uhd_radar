@@ -79,4 +79,16 @@ TEST(gpsLock, checkParams){
 
     test.revealGpsLock(sdr);
     EXPECT_TRUE(sdr.getUsrp()->get_mboard_sensor("gps_locked", 0).to_bool());
+    EXPECT_EQ(num_gps_locked, 1); //should pass test if gps is locked
 }
+
+TEST(check10MhzLock, checkParams){
+    const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
+    Sdr sdr(kYamlFile);
+    SdrHwTest test;
+
+    EXPECT_EQ(sensor_names, sdr.getUsrp()->get_mboard_sensor_names(0));
+    EXPECT_TRUE(ref_locked); //should pass test if locked to GPSDO 10 Mhz reference
+}
+
+TEST(checkAndSetTime, checkParams){}
