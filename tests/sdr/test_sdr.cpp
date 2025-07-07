@@ -71,6 +71,14 @@ TEST(GetterMethods, UntestedInLoadsDefault){
 
 
 //hardware testing for usrp
+TEST(check10MhzLock, checkParams){
+    const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
+    Sdr sdr(kYamlFile);
+    SdrHwTest test;
+
+    test.revealCheck10MhzLock(sdr);
+    EXPECT_TRUE(sdr.getUsrp()->get_mboard_sensor("gps_locked", 0).to_bool()); //should pass test if locked to GPSDO 10 Mhz reference
+}
 
 TEST(gpsLock, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
@@ -79,16 +87,76 @@ TEST(gpsLock, checkParams){
 
     test.revealGpsLock(sdr);
     EXPECT_TRUE(sdr.getUsrp()->get_mboard_sensor("gps_locked", 0).to_bool());
-    EXPECT_EQ(num_gps_locked, 1); //should pass test if gps is locked
 }
 
-TEST(check10MhzLock, checkParams){
+TEST(checkAndSetTime, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
     SdrHwTest test;
 
-    EXPECT_EQ(sensor_names, sdr.getUsrp()->get_mboard_sensor_names(0));
-    EXPECT_TRUE(ref_locked); //should pass test if locked to GPSDO 10 Mhz reference
+    test.revealCheckAndSetTime(sdr);
+    auto gps_time =sdr.getUsrp()->get_mboard_sensor("gps_time", 0).to_int();
+    time_spec_t expected_time(gps_time + 1.0);
+    auto actual_time = sdr.getUsrp()->get_time_last_pps(0);
+    EXPECT_EQ(expected_time, actual_time); //should pass if USRP time is synchronized to GPS time
+    //does this need to exist
 }
 
-TEST(checkAndSetTime, checkParams){}
+TEST(detectChannels, checkParams){
+    const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
+    Sdr sdr(kYamlFile);
+    SdrHwTest test;
+
+    test.revealDetectChannels(sdr);
+    size_t i = sdr.getTxChannelStrings().size() - 1;
+    auto tx_chan = stoi(sdr.getTxChannelStrings()[i]);
+    EXPECT_GT(sdr.getUsrp()->get_tx_num_channels(), tx_chan);
+    //edge cases?
+
+    size_t j = sdr.getRxChannelStrings().size()-1;
+    auto rx_chan = stoi(sdr.getRxChannelStrings()[j]);
+    EXPECT_GT(sdr.getUsrp()->get_rx_num_channels(), rx_chan);
+    //edge cases?
+}
+
+TEST(setRFParams, checkParams){
+    const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
+    Sdr sdr(kYamlFile);
+    SdrHwTest test;
+
+    test.revealSetRFParams(sdr);
+ //idk if any unit tests are needed for this particular function
+}
+
+TEST(refLoLockDetect, checkParams){
+    const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
+    Sdr sdr(kYamlFile);
+    SdrHwTest test;
+
+    test.revealRefLoLockDetect(sdr);
+    size_t i = sdr.getTxChannelNums().size() - 1;
+    vector<std::string> tx_sensor_names = sdr.getUsrp()->get_tx_sensor_names(i);
+    EXPECT_EQ(find(tx_sensor_names.begin(), tx_sensor_names.end(), "lo_locked"), tx_sensor_names.end());
+    //edge cases?
+
+    size_t j = sdr.getRxChannelNums().size() - 1;
+    vector<std::string> rx_sensor_names = sdr.getUsrp()->get_rx_sensor_names(i);
+    EXPECT_EQ(find(rx_sensor_names.begin(), rx_sensor_names.end(), "lo_locked"), rx_sensor_names.end());
+    //edge cases?
+}
+
+TEST(setupGpio, checkParams){
+    const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
+    Sdr sdr(kYamlFile);
+    SdrHwTest test;
+
+    test.revealSetupGpio(sdr);
+    EXPECT_NE(sdr.getPwrAmpPin(), -1);
+}
+
+TEST(setupTx, checkParams){}
+
+TEST(setupRx, checkParams){}
+
+
+
