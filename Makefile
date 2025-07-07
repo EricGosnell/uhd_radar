@@ -12,7 +12,7 @@ build-cxx:
 .PHONY: software-cxx-test
 software-cxx-test:
 	@echo "Running C++ software tests..."
-	ctest --test-dir sdr/build --output-on-failure -E "gpsLock|check10MhzLock|checkAndSetTime"
+	ctest --test-dir sdr/build --output-on-failure -E "gpsLock|check10MhzLock|checkAndSetTime|detectChannels|setRFParams|refLoLockDetect|setupGpio|setupTx|setupRx"
 
 .PHONY: python-test
 python-test:
@@ -20,7 +20,7 @@ python-test:
 	conda run -n uhd pytest tests/
 
 
-.PHONY: hardware-cxx-test:
+.PHONY: hardware-cxx-test
 hardware-cxx-test:
 	@echo "Running C++ hardware tests.."
 	ctest --test-dir sdr/build --output-on-failure
