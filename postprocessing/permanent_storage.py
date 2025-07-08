@@ -27,7 +27,7 @@ def move_timestamped_files(timestamp, source_dir, dest_dir):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description= "Move timestamped files to permanent storage")
     parser.add_argument("timestamp", help="Timestamp to match files (format: YYYYMMDD_HHMMSS)")
-    parser.add_argument("source_dir", default="data", help="Source directory path containing files to move (default: data)")
-    parser.add_argument("dest_dir", help="Destination directory path for permanent storage") # maybe add default later
+    parser.add_argument("--source_dir", default="data", help="Source directory (default: data)")
+    parser.add_argument("--dest_dir", required=True, help="Destination directory for permanent storage")# maybe add default later
     args = parser.parse_args()
     move_timestamped_files(args.timestamp, args.source_dir, dest_dir= args.dest_dir)
