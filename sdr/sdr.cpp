@@ -358,7 +358,7 @@ void Sdr::setupGpio(){
     usrp->set_gpio_attr(gpio_bank, "ATR_XX", AMP_GPIO_MASK, AMP_GPIO_MASK);
   }
 
-  //cout << "sdr.AMP_GPIO_MASK: " << bitset<32>(sdr.AMP_GPIO_MASK) << endl;
+//  cout << "AMP_GPIO_MASK: " << bitset<32>(AMP_GPIO_MASK) << endl;
 
   // turns external ref out port on or off
    if (ref_out_int == 1) {
@@ -405,3 +405,44 @@ void Sdr::setupRx(){
 
   cout << "INFO: rx_stream get_max_num_samps: " << rx_stream->get_max_num_samps() << endl;
 }
+
+// DEVICE
+string Sdr::getDeviceArgs() const {return device_args;}
+string Sdr::getSubdev() const {return subdev;}
+string Sdr::getClkRef() const {return clk_ref;}
+double Sdr::getClkRate() const {return clk_rate;}
+string Sdr::getTxChannels() const {return tx_channels;}
+string Sdr::getRxChannels() const {return rx_channels;}
+string Sdr::getCpuFormat() const {return cpu_format;}
+string Sdr::getOtwFormat() const {return otw_format;}
+
+// GPIO
+int Sdr::getPwrAmpPin() const {return pwr_amp_pin;}
+string Sdr::getGpioBank() const {return gpio_bank;}
+uint32_t Sdr::getAmpGpioMask() const {return AMP_GPIO_MASK;}
+uint32_t Sdr::getAtrMasks() const {return ATR_MASKS;}
+uint32_t Sdr::getAtrControl() const {return ATR_CONTROL;}
+uint32_t Sdr::getGpioDdr() const {return GPIO_DDR;}
+int Sdr::getRefOutInt() const {return ref_out_int;}
+
+// RF
+YAML::Node Sdr::getRf0() const {return rf0;}
+YAML::Node Sdr::getRf1() const {return rf1;}
+double Sdr::getRxRate() const {return rx_rate;}
+double Sdr::getTxRate() const {return tx_rate;}
+double Sdr::getFreq() const {return freq;}
+double Sdr::getRxGain() const {return rx_gain;}
+double Sdr::getTxGain() const {return tx_gain;}
+double Sdr::getBw() const {return bw;}
+string Sdr::getRxAnt() const {return rx_ant;}
+string Sdr::getTxAnt() const {return tx_ant;}
+bool Sdr::getTransmit() const {return transmit;}
+
+// USRP
+usrp::multi_usrp::sptr Sdr::getUsrp() const {return usrp;}
+tx_streamer::sptr Sdr::getTxStream() const {return tx_stream;}
+rx_streamer::sptr Sdr::getRxStream() const {return rx_stream;}
+vector<string>& Sdr::getTxChannelStrings() {return tx_channel_strings;}
+vector<size_t>& Sdr::getTxChannelNums() {return tx_channel_nums;}
+vector<string>& Sdr::getRxChannelStrings() {return rx_channel_strings;}
+vector<size_t>& Sdr::getRxChannelNums() {return rx_channel_nums;}
