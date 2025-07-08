@@ -71,7 +71,7 @@ std::mutex cout_mutex;
  * @param inversion_phase Phase to use for phase inversion of this chirp
  */
 void handleRxBuffer(size_t n_samps_in_rx_buff, rx_metadata_t& rx_md, Chirp& chirp, vector<complex<float>>& buff, vector<complex<float>>& sample_sum, float& inversion_phase) {
-  if (chirp.phase_dither) {
+  if (chirp.getPhaseDither()) {
     inversion_phase = -1.0 * get_next_phase(false); // Get next phase from the generator each time to keep in sequence with TX
   }
 
@@ -100,12 +100,12 @@ void handleRxBuffer(size_t n_samps_in_rx_buff, rx_metadata_t& rx_md, Chirp& chir
   } else {
     pulses_received++;
 
-    if (chirp.phase_dither) {
+    if (chirp.getPhaseDither()) {
       // Undo phase modulation and divide by num_presums in one go
-      transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), polar((float) 1.0/chirp.num_presums, inversion_phase)));
-    } else if (chirp.num_presums != 1) {
+      transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), polar((float) 1.0/chirp.getNumPresums(), inversion_phase)));
+    } else if (chirp.getNumPresums() != 1) {
       // Only divide by num_presums
-      transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), 1.0/chirp.num_presums));
+      transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), 1.0/chirp.getNumPresums()));
     }
 
     // Add to sample_sum
@@ -126,7 +126,7 @@ void handleRxBuffer(size_t n_samps_in_rx_buff, rx_metadata_t& rx_md, Chirp& chir
  * @return Returns true if the data was successfully written to the file, false otherwise signaling error
  */
 bool checkForFullSampleSum(size_t pulses_received, long int error_count, long int& last_pulse_num_written, Chirp& chirp, vector<complex<float>>& sample_sum, ofstream& outfile) {
-  if (((pulses_received - error_count) > last_pulse_num_written) && ((pulses_received - error_count) % chirp.num_presums == 0)) {
+  if (((pulses_received - error_count) > last_pulse_num_written) && ((pulses_received - error_count) % chirp.getNumPresums() == 0)) {
     // As each sample is added, it has phase inversion applied and is divided by # presums, so no additional work to do here.
     // write RX data to file
     if (outfile.is_open()) {
@@ -157,7 +157,7 @@ bool checkForFullSampleSum(size_t pulses_received, long int error_count, long in
  * @param last_pulse_num_written Last pulse number written to the file
  */
 void splitOutputFiles(Chirp& chirp, ofstream& outfile, string& current_filename, int& save_file_index, long int last_pulse_num_written) {
-  if ( (chirp.max_chirps_per_file > 0) && (int(last_pulse_num_written / chirp.max_chirps_per_file) > save_file_index)) {
+  if ( (chirp.getMaxChirpsPerFile() > 0) && (int(last_pulse_num_written / chirp.getMaxChirpsPerFile()) > save_file_index)) {
     outfile.close();
     // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
     cout_mutex.lock();
