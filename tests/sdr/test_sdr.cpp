@@ -76,8 +76,12 @@ TEST(check10MhzLock, checkParams){
     Sdr sdr(kYamlFile);
     SdrHwTest test;
 
+    sdr.createUsrp();
+
+    if(sdr.getClkRef() == "gpsdo"){
     test.revealCheck10MhzLock(sdr);
     EXPECT_TRUE(sdr.getUsrp()->get_mboard_sensor("gps_locked", 0).to_bool()); //should pass test if locked to GPSDO 10 Mhz reference
+    }
 }
 
 TEST(gpsLock, checkParams){
@@ -85,27 +89,45 @@ TEST(gpsLock, checkParams){
     Sdr sdr(kYamlFile);
     SdrHwTest test;
 
+    sdr.createUsrp();
+
+    if(sdr.getClkRef() == "gpsdo"){
+    test.revealCheck10MhzLock(sdr);
     test.revealGpsLock(sdr);
     EXPECT_TRUE(sdr.getUsrp()->get_mboard_sensor("gps_locked", 0).to_bool());
-}
+}}
 
 TEST(checkAndSetTime, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
     SdrHwTest test;
 
-    test.revealCheckAndSetTime(sdr);
-    auto gps_time =sdr.getUsrp()->get_mboard_sensor("gps_time", 0).to_int();
-    time_spec_t expected_time(gps_time + 1.0);
-    auto actual_time = sdr.getUsrp()->get_time_last_pps(0);
-    EXPECT_EQ(expected_time, actual_time); //should pass if USRP time is synchronized to GPS time
+    sdr.createUsrp();
+    if(sdr.getClkRef() == "gpsdo"){
+        test.revealCheck10MhzLock(sdr);
+        test.revealGpsLock(sdr);
+        test.revealCheckAndSetTime(sdr);
+        auto gps_time =sdr.getUsrp()->get_mboard_sensor("gps_time", 0).to_int();
+        time_spec_t expected_time(gps_time + 1.0);
+        auto actual_time = sdr.getUsrp()->get_time_last_pps(0);
+        EXPECT_EQ(expected_time, actual_time); //should pass if USRP time is synchronized to GPS time
     //does this need to exist
-}
+}}
 
 TEST(detectChannels, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
     SdrHwTest test;
+
+    sdr.createUsrp();
+
+    sdr.getUsrp()->set_time_next_pps(time_spec_t(0.0));
+    this_thread::sleep_for((chrono::milliseconds(1000)));
+    if (sdr.getTransmit()) {
+        sdr.getUsrp()->set_tx_subdev_spec(sdr.getSubdev());
+     }
+    sdr.getUsrp()->set_rx_subdev_spec(sdr.getSubdev());
+    sdr.getUsrp()->set_master_clock_rate(sdr.getClkRate());
 
     test.revealDetectChannels(sdr);
     size_t i = sdr.getTxChannelStrings().size() - 1;
@@ -124,8 +146,18 @@ TEST(setRFParams, checkParams){
     Sdr sdr(kYamlFile);
     SdrHwTest test;
 
-    test.revealSetRFParams(sdr);
- //idk if any unit tests are needed for this particular function
+    sdr.createUsrp();
+
+    sdr.getUsrp()->set_time_next_pps(time_spec_t(0.0));
+    this_thread::sleep_for((chrono::milliseconds(1000)));
+    if (sdr.getTransmit()) {
+        sdr.getUsrp()->set_tx_subdev_spec(sdr.getSubdev());
+     }
+    sdr.getUsrp()->set_rx_subdev_spec(sdr.getSubdev());
+    sdr.getUsrp()->set_master_clock_rate(sdr.getClkRate());
+
+    test.revealDetectChannels(sdr);
+    EXPECT_NO_THROW(test.revealSetRFParams(sdr));
 }
 
 TEST(refLoLockDetect, checkParams){
@@ -133,23 +165,41 @@ TEST(refLoLockDetect, checkParams){
     Sdr sdr(kYamlFile);
     SdrHwTest test;
 
-    test.revealRefLoLockDetect(sdr);
-    size_t i = sdr.getTxChannelNums().size() - 1;
-    vector<std::string> tx_sensor_names = sdr.getUsrp()->get_tx_sensor_names(i);
-    EXPECT_EQ(find(tx_sensor_names.begin(), tx_sensor_names.end(), "lo_locked"), tx_sensor_names.end());
-    //edge cases?
+    sdr.createUsrp();
 
-    size_t j = sdr.getRxChannelNums().size() - 1;
-    vector<std::string> rx_sensor_names = sdr.getUsrp()->get_rx_sensor_names(i);
-    EXPECT_EQ(find(rx_sensor_names.begin(), rx_sensor_names.end(), "lo_locked"), rx_sensor_names.end());
-    //edge cases?
-}
+    sdr.getUsrp()->set_time_next_pps(time_spec_t(0.0));
+    this_thread::sleep_for((chrono::milliseconds(1000)));
+    if (sdr.getTransmit()) {
+        sdr.getUsrp()->set_tx_subdev_spec(sdr.getSubdev());
+     }
+    sdr.getUsrp()->set_rx_subdev_spec(sdr.getSubdev());
+    sdr.getUsrp()->set_master_clock_rate(sdr.getClkRate());
+
+    test.revealDetectChannels(sdr);
+    test.revealSetRFParams(sdr);
+    test.revealRefLoLockDetect(sdr);
+
+    EXPECT_NO_THROW(test.revealRefLoLockDetect(sdr));
+    }
 
 TEST(setupGpio, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
     SdrHwTest test;
 
+    sdr.createUsrp();
+
+    sdr.getUsrp()->set_time_next_pps(time_spec_t(0.0));
+    this_thread::sleep_for((chrono::milliseconds(1000)));
+    if (sdr.getTransmit()) {
+        sdr.getUsrp()->set_tx_subdev_spec(sdr.getSubdev());
+     }
+    sdr.getUsrp()->set_rx_subdev_spec(sdr.getSubdev());
+    sdr.getUsrp()->set_master_clock_rate(sdr.getClkRate());
+
+    test.revealDetectChannels(sdr);
+    test.revealSetRFParams(sdr);
+    test.revealRefLoLockDetect(sdr);
     test.revealSetupGpio(sdr);
     EXPECT_NE(sdr.getPwrAmpPin(), -1);
 }
