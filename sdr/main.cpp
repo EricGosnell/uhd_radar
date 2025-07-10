@@ -1,33 +1,4 @@
-#include <uhd/utils/thread.hpp>
-#include <uhd/utils/safe_main.hpp>
-#include <uhd/exception.hpp>
-#include <uhd/types/tune_request.hpp>
-#include <uhd/convert.hpp>
-#include <boost/program_options.hpp>
-#include <boost/thread.hpp>
-#include <boost/chrono.hpp>
-#include <boost/thread/barrier.hpp>
-#include <fstream>
-#include <csignal>
-#include <complex>
-#include <mutex>
-#include <cstdlib>
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/posix/stream_descriptor.hpp>
-#include <boost/asio/write.hpp>
-
-#include "yaml-cpp/yaml.h"
-#include "rf_settings.hpp"
-#include "pseudorandom_phase.hpp"
-#include "utils.hpp"
-#include "sdr.hpp"
-#include "chirp.hpp"
-#include "common.hpp"
-
-/*
- * PROTOTYPES
- */
-void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream, Chirp& chirp, Sdr& sdr);
+#include "main.hpp"
 
 /*
  * SIG INT HANDLER
