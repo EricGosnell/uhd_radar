@@ -70,10 +70,16 @@ TEST(GetterMethods, UntestedInLoadsDefault){
 }
 
 
-//hardware testing for usrp
-//add comments the can be read by doxygen like the comments above the other functions
-//make unit tests for all funtionality of the functions, edge cases and stuff. Also, mess up variables and see if the function throws errors or still runs.
-//test with hardware before merging with main
+//hardware testing for usrp, all run at the very beginning
+
+/**
+ * @brief tests the check10MhzLock function when hardware and gps are connected
+ * 
+ * unit tests for this function. this function is accessed by a friend class 
+ * at the top of this file and so are all the testing suites below
+ * 
+ * this checks to make sure the gps_locked variable is true
+ */
 TEST(check10MhzLock, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
@@ -87,6 +93,12 @@ TEST(check10MhzLock, checkParams){
     }
 }
 
+
+/** 
+ * @brief tests gpsLock function when gps and hardware are connected
+ * 
+ * this makes sure the gps_locked variable is true
+ */
 TEST(gpsLock, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
@@ -100,6 +112,12 @@ TEST(gpsLock, checkParams){
     EXPECT_TRUE(sdr.getUsrp()->get_mboard_sensor("gps_locked", 0).to_bool());
 }}
 
+
+/** 
+ * @brief tests checkAndSetTime function when hardware and gps are connected
+ * 
+ * this makes sure that the expected time and the actual time are the same
+ */
 TEST(checkAndSetTime, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
@@ -117,6 +135,13 @@ TEST(checkAndSetTime, checkParams){
     //does this need to exist
 }}
 
+
+/**
+ * @brief tests detectChannels function when hardware is connected
+ * 
+ * makes sure the number of tx_channels is greater than the channel we are using
+ * makes sure no errors are thrown
+ */
 TEST(detectChannels, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
@@ -144,6 +169,12 @@ TEST(detectChannels, checkParams){
     EXPECT_NO_THROW(test.revealDetectChannels(sdr)); //makes sure no errors are thrown when working how the function should;
     }
 
+
+ /**
+  * @brief tests setRFParams function when hardware is connected
+  * 
+  * makes sure no errors are thrown in the setup
+  */
 TEST(setRFParams, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
@@ -164,6 +195,12 @@ TEST(setRFParams, checkParams){
     EXPECT_NO_THROW(test.revealSetRFParams(sdr));
 }
 
+
+/**
+ * @brief tests refLOLockDetect function when hardware is connected
+ * 
+ * makes sure no errors are thrown in the setup
+ */
 TEST(refLoLockDetect, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
@@ -186,6 +223,12 @@ TEST(refLoLockDetect, checkParams){
     EXPECT_NO_THROW(test.revealRefLoLockDetect(sdr));
     }
 
+
+/**
+ * @brief tests setupGpio fucntion when hardware is connected
+ * 
+ * makes sure the power amp pin is not equal to -1
+ */
 TEST(setupGpio, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
