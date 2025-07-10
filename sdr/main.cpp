@@ -141,13 +141,14 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   /*** FILE WRITE SETUP ***/
   boost::asio::io_service ioservice;
 
+  /*
   if (save_loc[0] != '/') {
-    save_loc = "../../" + save_loc;
+    save_loc = "/" + save_loc;
   }
   if (gps_save_loc[0] != '/') {
     gps_save_loc = "../../" + gps_save_loc;
   }
-
+*/
   int gps_file = open(gps_save_loc.c_str(), O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
   if (gps_file == -1) {
       throw std::runtime_error("Failed to open GPS file: " + gps_save_loc);

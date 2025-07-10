@@ -94,6 +94,7 @@ def generate_from_yaml_filename(yaml_filename):
     yaml = YAML(typ='safe')
     stream = open(yaml_filename)
     config = yaml.load(stream)
+    output_dir = config['FILES'].get('output_dir', 'data')
 
     # Load some additional paramters needed here
     filename = os.path.join(output_dir, config['GENERATE']["out_file"])
