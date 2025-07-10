@@ -274,7 +274,7 @@ void Sdr::detectChannels(){
 
 void Sdr::setRFParams(){
  // set the RF parameters based on 1 or 2 channel operation
-  if (tx_channel_nums.size() == 1) {
+   if (tx_channel_nums.size() == 1) {
     set_rf_params_single(usrp, rf0, rx_channel_nums, tx_channel_nums);
   } else if (tx_channel_nums.size() == 2) {
     if (!transmit) {

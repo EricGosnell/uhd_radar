@@ -71,6 +71,9 @@ TEST(GetterMethods, UntestedInLoadsDefault){
 
 
 //hardware testing for usrp
+//add comments the can be read by doxygen like the comments above the other functions
+//make unit tests for all funtionality of the functions, edge cases and stuff. Also, mess up variables and see if the function throws errors or still runs.
+//test with hardware before merging with main
 TEST(check10MhzLock, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
     Sdr sdr(kYamlFile);
@@ -133,13 +136,13 @@ TEST(detectChannels, checkParams){
     size_t i = sdr.getTxChannelStrings().size() - 1;
     auto tx_chan = stoi(sdr.getTxChannelStrings()[i]);
     EXPECT_GT(sdr.getUsrp()->get_tx_num_channels(), tx_chan);
-    //edge cases?
+    EXPECT_NO_THROW(test.revealDetectChannels(sdr)); //makes sure no errors are thrown when working how the function should
 
     size_t j = sdr.getRxChannelStrings().size()-1;
     auto rx_chan = stoi(sdr.getRxChannelStrings()[j]);
     EXPECT_GT(sdr.getUsrp()->get_rx_num_channels(), rx_chan);
-    //edge cases?
-}
+    EXPECT_NO_THROW(test.revealDetectChannels(sdr)); //makes sure no errors are thrown when working how the function should;
+    }
 
 TEST(setRFParams, checkParams){
     const string kYamlFile = string(CONFIG_DIR) + "/default.yaml";
@@ -157,6 +160,7 @@ TEST(setRFParams, checkParams){
     sdr.getUsrp()->set_master_clock_rate(sdr.getClkRate());
 
     test.revealDetectChannels(sdr);
+    test.revealSetRFParams(sdr);
     EXPECT_NO_THROW(test.revealSetRFParams(sdr));
 }
 
