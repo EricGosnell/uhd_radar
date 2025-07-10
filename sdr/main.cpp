@@ -12,6 +12,7 @@ void sig_int_handler(int) {
 
 // FILENAMES
 string chirp_loc;
+string output_dir;
 string save_loc;
 string gps_save_loc;
 
@@ -204,9 +205,14 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   YAML::Node files = config["FILES"];
   chirp_loc = files["chirp_loc"].as<string>();
+  output_dir = files["output_dir"].as<string>();
   save_loc = files["save_loc"].as<string>();
   gps_save_loc = files["gps_loc"].as<string>();
   chirp.setMaxChirpsPerFile(files["max_chirps_per_file"].as<int>());
+
+  //Merge save_loc and gps_save_loc with output_dir
+  save_loc = (std::filesystem::path(output_dir) / save_loc).string();
+  gps_save_loc = (std::filesystem::path(output_dir) / gps_save_loc).string();
 
   // Calculated parameters
 
