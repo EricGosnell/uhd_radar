@@ -125,7 +125,7 @@ void handleRxBuffer(size_t n_samps_in_rx_buff, rx_metadata_t& rx_md, Chirp& chir
  * @param outfile Output file stream to write the RX data
  * @return Returns true if the data was successfully written to the file, false otherwise signaling error
  */
-bool checkForFullSampleSum(size_t pulses_received, long int error_count, long int& last_pulse_num_written, Chirp& chirp, vector<complex<float>>& sample_sum, ofstream& outfile) {
+bool checkForFullSampleSum(Chirp& chirp, vector<complex<float>>& sample_sum, ofstream& outfile) {
   if (((pulses_received - error_count) > last_pulse_num_written) && ((pulses_received - error_count) % chirp.getNumPresums() == 0)) {
     // As each sample is added, it has phase inversion applied and is divided by # presums, so no additional work to do here.
     // write RX data to file
@@ -156,7 +156,7 @@ bool checkForFullSampleSum(size_t pulses_received, long int error_count, long in
  * @param save_file_index Index of the current file being saved
  * @param last_pulse_num_written Last pulse number written to the file
  */
-void splitOutputFiles(Chirp& chirp, ofstream& outfile, string& current_filename, int& save_file_index, long int last_pulse_num_written) {
+void splitOutputFiles(Chirp& chirp, ofstream& outfile, string& current_filename, int& save_file_index) {
   if ( (chirp.getMaxChirpsPerFile() > 0) && (int(last_pulse_num_written / chirp.getMaxChirpsPerFile()) > save_file_index)) {
     outfile.close();
     // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
@@ -189,7 +189,7 @@ void splitOutputFiles(Chirp& chirp, ofstream& outfile, string& current_filename,
  * @param pulses_received Total number of pulses received during the RX process
  * @param transmit_thread Thread group for the transmit worker
  */
-void wrapUp(boost::asio::posix::stream_descriptor& gps_stream, ofstream& outfile, string& current_filename, long int error_count, long int last_pulse_num_written, long int pulses_received, boost::thread_group& transmit_thread) {
+void wrapUp(boost::asio::posix::stream_descriptor& gps_stream, ofstream& outfile, string& current_filename, boost::thread_group& transmit_thread) {
   cout << "[RX] Closing output file." << endl;
   outfile.close();
   cout << "[CLOSE FILE] " << current_filename << endl;
@@ -207,7 +207,7 @@ void wrapUp(boost::asio::posix::stream_descriptor& gps_stream, ofstream& outfile
   cout << "[RX] transmit_thread.join_all() complete." << endl << endl;
 }
 
-/*
+/* 
  * UHD_SAFE_MAIN
  */
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
@@ -356,14 +356,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
     n_samps_in_rx_buff = sdr.getRxStream()->recv(buffs, num_rx_samps, rx_md, 60.0, false); // TODO: Think about timeout
 
-    if (chirp.getPhaseDither()) {
-      inversion_phase = -1.0 * get_next_phase(false); // Get next phase from the generator each time to keep in sequence with TX
-    }
-
     // Check for errors in the RX buffer
     handleRxBuffer(n_samps_in_rx_buff, rx_md, chirp, buff, sample_sum, inversion_phase);
     // Check if we have a full sample_sum ready to write to file
-    if (!checkForFullSampleSum(pulses_received, error_count, last_pulse_num_written, chirp, sample_sum, outfile)) {exit(1);};
+    if (!checkForFullSampleSum(chirp, sample_sum, outfile)) {exit(1);};
 
 
     // get gps data
@@ -386,14 +382,14 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     }*/
 
     // split output files based on number of chirps
-    splitOutputFiles(chirp, outfile, current_filename, save_file_index, last_pulse_num_written);
+    splitOutputFiles(chirp, outfile, current_filename, save_file_index);
     
     // // clear the matrices holding the sums
     // fill(sample_sum.begin(), sample_sum.end(), complex<int16_t>(0,0));
   }
 
   /*** WRAP UP ***/
-  wrapUp(gps_stream, outfile, current_filename, error_count, last_pulse_num_written, pulses_received, transmit_thread);
+  wrapUp(gps_stream, outfile, current_filename, transmit_thread);
 
   return EXIT_SUCCESS;
   
