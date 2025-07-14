@@ -211,8 +211,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   chirp.setMaxChirpsPerFile(files["max_chirps_per_file"].as<int>());
 
   //Merge save_loc and gps_save_loc with output_dir
-  save_loc = (std::filesystem::path(output_dir) / save_loc).string();
-  gps_save_loc = (std::filesystem::path(output_dir) / gps_save_loc).string();
+  save_loc = std::filesystem::path(output_dir).string() + "/" + save_loc;
+  gps_save_loc = std::filesystem::path(output_dir).string() + "/" + gps_save_loc;
 
   // Calculated parameters
 
@@ -260,6 +260,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   /*** FILE WRITE SETUP ***/
   boost::asio::io_service ioservice;
 
+  
   if (save_loc[0] != '/') {
     save_loc = "../../" + save_loc;
   }
@@ -380,7 +381,7 @@ void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream,
   set_thread_priority_safe(1.0, true);
 
   // open file to stream from
-  ifstream infile("../../" + chirp_loc, ifstream::binary);
+  ifstream infile("../../" + output_dir + "/" + chirp_loc, ifstream::binary);
 
   if (!infile.is_open())
   {
