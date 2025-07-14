@@ -1,34 +1,4 @@
-#include <uhd/utils/thread.hpp>
-#include <uhd/utils/safe_main.hpp>
-#include <uhd/exception.hpp>
-#include <uhd/types/tune_request.hpp>
-#include <uhd/convert.hpp>
-#include <boost/program_options.hpp>
-#include <boost/thread.hpp>
-#include <boost/chrono.hpp>
-#include <boost/thread/barrier.hpp>
-#include <fstream>
-#include <csignal>
-#include <complex>
-#include <mutex>
-#include <cstdlib>
-#include <filesystem>
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/posix/stream_descriptor.hpp>
-#include <boost/asio/write.hpp>
-
-#include "yaml-cpp/yaml.h"
-#include "rf_settings.hpp"
-#include "pseudorandom_phase.hpp"
-#include "utils.hpp"
-#include "sdr.hpp"
-#include "chirp.hpp"
-#include "common.hpp"
-
-/*
- * PROTOTYPES
- */
-void transmit_worker(tx_streamer::sptr& tx_stream, rx_streamer::sptr& rx_stream, Chirp& chirp, Sdr& sdr);
+#include "main.hpp"
 
 /*
  * SIG INT HANDLER
@@ -60,7 +30,156 @@ long int last_pulse_num_written = -1; // Index number (pulses_received - error_c
 // Cout mutex
 std::mutex cout_mutex;
 
-/*
+
+/**
+ * @brief Checks for errors in the RX buffer and adds the errors to a counter, before using transform() on the incoming pulse
+ * 
+ * checks for assorted unknown errors related to RX, checks for unexpected number of samples in the RX buffer, and then uses the transform() function if no errors are found
+ * @param n_samps_in_rx_buff Number of samples in the RX buffer
+ * @param rx_md Metadata from the RX stream
+ * @param chirp Chirp object containing parameters for the chirp
+ * @param buff Buffer for individual RX samples
+ * @param sample_sum Sum error-free RX pulses
+ * @param inversion_phase Phase to use for phase inversion of this chirp
+ */
+void handleRxBuffer(size_t n_samps_in_rx_buff, rx_metadata_t& rx_md, Chirp& chirp, vector<complex<float>>& buff, vector<complex<float>>& sample_sum, float& inversion_phase) {
+  if (chirp.getPhaseDither()) {
+    inversion_phase = -1.0 * get_next_phase(false); // Get next phase from the generator each time to keep in sequence with TX
+  }
+
+  if (rx_md.error_code != rx_metadata_t::ERROR_CODE_NONE){
+    // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
+    cout_mutex.lock();
+    cout << "[ERROR] (Chirp " << pulses_received << ") Receiver error: " << rx_md.strerror() << "\n";
+    cout_mutex.unlock();
+    
+    pulses_received++;
+    error_count++;
+  } else if (n_samps_in_rx_buff != num_rx_samps) {
+    // Unexpected number of samples received in buffer!
+    // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
+    cout_mutex.lock();
+    cout << "[ERROR] (Chirp " << pulses_received << ") Unexpected number of samples in the RX buffer.";
+    cout << " Got: " << n_samps_in_rx_buff << " Expected: " << num_rx_samps << endl;
+    cout << "Note: rx_stream->recv can return less than the expected number of samples in some situations, ";
+    cout << "but it's not currently supported by this code." << endl;
+    cout_mutex.unlock();
+    // If you encounter this error, one possible reason is that the buffer sizes set in your transport parameters are too small.
+    // For libUSB-based transport, recv_frame_size should be at least the size of num_rx_samps.
+
+    pulses_received++;
+    error_count++;
+  } else {
+    pulses_received++;
+
+    if (chirp.getPhaseDither()) {
+      // Undo phase modulation and divide by num_presums in one go
+      transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), polar((float) 1.0/chirp.getNumPresums(), inversion_phase)));
+    } else if (chirp.getNumPresums() != 1) {
+      // Only divide by num_presums
+      transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), 1.0/chirp.getNumPresums()));
+    }
+
+    // Add to sample_sum
+    transform(sample_sum.begin(), sample_sum.end(), buff.begin(), sample_sum.begin(), plus<complex<float>>());
+  }
+}
+
+/**
+ * @brief Writes received RX data to file if enough pulses have been received
+ * 
+ * Checks if the number of pulses received is enough to write a full sample_sum to the file, only if enough error-free pulses have been received.
+ * @param pulses_received Total number of pulses received
+ * @param error_count Total number of errors encountered
+ * @param last_pulse_num_written Last pulse number written to the file
+ * @param chirp Chirp object containing parameters for the chirp
+ * @param sample_sum Vector containing the sum of error-free RX pulses
+ * @param outfile Output file stream to write the RX data
+ * @return Returns true if the data was successfully written to the file, false otherwise signaling error
+ */
+bool checkForFullSampleSum(Chirp& chirp, vector<complex<float>>& sample_sum, ofstream& outfile) {
+  if (((pulses_received - error_count) > last_pulse_num_written) && ((pulses_received - error_count) % chirp.getNumPresums() == 0)) {
+    // As each sample is added, it has phase inversion applied and is divided by # presums, so no additional work to do here.
+    // write RX data to file
+    if (outfile.is_open()) {
+      outfile.write((const char*)&sample_sum.front(), 
+        num_rx_samps * sizeof(complex<float>));
+    } else {
+      cout_mutex.lock();
+      cout << "Cannot write to outfile!" << endl;
+      cout_mutex.unlock();
+      return false; // Error writing to file
+    }
+    fill(sample_sum.begin(), sample_sum.end(), complex<float>(0,0)); // Zero out sum for next time
+    last_pulse_num_written = pulses_received - error_count;
+  }
+  return true;
+}
+
+// Split output files based on number of chirps
+
+/**
+ * @brief Determines if the amount of pulses received is enough to add another file for storage
+ * 
+ * Creates more files if the number of pulses is higher than the maximum number of chirps per file, but only if file splitting is enabled.
+ * @param chirp Chirp object containing parameters for the chirp
+ * @param outfile Output file stream to write the RX data
+ * @param current_filename Current filename for the output file
+ * @param save_file_index Index of the current file being saved
+ * @param last_pulse_num_written Last pulse number written to the file
+ */
+void splitOutputFiles(Chirp& chirp, ofstream& outfile, string& current_filename, int& save_file_index) {
+  if ( (chirp.getMaxChirpsPerFile() > 0) && (int(last_pulse_num_written / chirp.getMaxChirpsPerFile()) > save_file_index)) {
+    outfile.close();
+    // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
+    cout_mutex.lock();
+    cout << "[CLOSE FILE] " << current_filename << endl;
+    cout_mutex.unlock();
+
+    save_file_index++;
+    current_filename = save_loc + "." + to_string(save_file_index);
+
+    // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
+    cout_mutex.lock();
+    cout << "[OPEN FILE] " << current_filename << endl;
+    cout_mutex.unlock();
+    outfile.open(current_filename, ofstream::binary);
+  }
+}
+
+//Wrapping up main function after the RX loop is done
+
+/**
+ * @brief Finalizes the main function once the main while loop is done
+ * 
+ * Various tasks are finished and significant information is printed to the console, such as the number of errors encountered, total pulses written, and total pulses attempted.
+ * @param gps_stream GPS stream descriptor for closing the GPS file
+ * @param outfile Output file stream to close
+ * @param current_filename Current filename for the output file
+ * @param error_count Total number of errors encountered during the RX process
+ * @param last_pulse_num_written Last pulse number written to the file
+ * @param pulses_received Total number of pulses received during the RX process
+ * @param transmit_thread Thread group for the transmit worker
+ */
+void wrapUp(boost::asio::posix::stream_descriptor& gps_stream, ofstream& outfile, string& current_filename, boost::thread_group& transmit_thread) {
+  cout << "[RX] Closing output file." << endl;
+  outfile.close();
+  cout << "[CLOSE FILE] " << current_filename << endl;
+
+  gps_stream.close();
+
+  cout << "[RX] Error count: " << error_count << endl;
+  cout << "[RX] Total pulses written: " << last_pulse_num_written << endl;
+  cout << "[RX] Total pulses attempted: " << pulses_received << endl;
+  
+  cout << "[RX] Done. Calling join_all() on transmit thread group." << endl;
+
+  transmit_thread.join_all();
+
+  cout << "[RX] transmit_thread.join_all() complete." << endl << endl;
+}
+
+/* 
  * UHD_SAFE_MAIN
  */
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
@@ -215,63 +334,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
     n_samps_in_rx_buff = sdr.getRxStream()->recv(buffs, num_rx_samps, rx_md, 60.0, false); // TODO: Think about timeout
 
-    if (chirp.getPhaseDither()) {
-      inversion_phase = -1.0 * get_next_phase(false); // Get next phase from the generator each time to keep in sequence with TX
-    }
-
-    if (rx_md.error_code != rx_metadata_t::ERROR_CODE_NONE){
-      // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
-      cout_mutex.lock();
-      cout << "[ERROR] (Chirp " << pulses_received << ") Receiver error: " << rx_md.strerror() << "\n";
-      cout_mutex.unlock();
-      
-      pulses_received++;
-      error_count++;
-    } else if (n_samps_in_rx_buff != num_rx_samps) {
-      // Unexpected number of samples received in buffer!
-      // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
-      cout_mutex.lock();
-      cout << "[ERROR] (Chirp " << pulses_received << ") Unexpected number of samples in the RX buffer.";
-      cout << " Got: " << n_samps_in_rx_buff << " Expected: " << num_rx_samps << endl;
-      cout << "Note: rx_stream->recv can return less than the expected number of samples in some situations, ";
-      cout << "but it's not currently supported by this code." << endl;
-      cout_mutex.unlock();
-      // If you encounter this error, one possible reason is that the buffer sizes set in your transport parameters are too small.
-      // For libUSB-based transport, recv_frame_size should be at least the size of num_rx_samps.
-
-      pulses_received++;
-      error_count++;
-    } else {
-      pulses_received++;
-
-      if (chirp.getPhaseDither()) {
-        // Undo phase modulation and divide by num_presums in one go
-        transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), polar((float) 1.0/chirp.getNumPresums(), inversion_phase)));
-      } else if (chirp.getNumPresums() != 1) {
-        // Only divide by num_presums
-        transform(buff.begin(), buff.end(), buff.begin(), std::bind1st(std::multiplies<complex<float>>(), 1.0/chirp.getNumPresums()));
-      }
-
-      // Add to sample_sum
-      transform(sample_sum.begin(), sample_sum.end(), buff.begin(), sample_sum.begin(), plus<complex<float>>());
-    }
-
+    // Check for errors in the RX buffer
+    handleRxBuffer(n_samps_in_rx_buff, rx_md, chirp, buff, sample_sum, inversion_phase);
     // Check if we have a full sample_sum ready to write to file
-    if (((pulses_received - error_count) > last_pulse_num_written) && ((pulses_received - error_count) % chirp.getNumPresums() == 0)) {
-      // As each sample is added, it has phase inversion applied and is divided by # presums, so no additional work to do here.
-      // write RX data to file
-      if (outfile.is_open()) {
-        outfile.write((const char*)&sample_sum.front(), 
-          num_rx_samps * sizeof(complex<float>));
-      } else {
-        cout_mutex.lock();
-        cout << "Cannot write to outfile!" << endl;
-        cout_mutex.unlock();
-        exit(1);
-      }
-      fill(sample_sum.begin(), sample_sum.end(), complex<float>(0,0)); // Zero out sum for next time
-      last_pulse_num_written = pulses_received - error_count;
-    }
+    if (!checkForFullSampleSum(chirp, sample_sum, outfile)) {exit(1);};
+
 
     // get gps data
     /*if (sdr.getClkRef() == "gpsdo" && ((pulses_received % 100000) == 0)) {
@@ -292,44 +359,15 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
       boost::asio::async_write(gps_stream, boost::asio::buffer(gps_data + "\n"), gps_asio_handler);
     }*/
 
-    if ( (chirp.getMaxChirpsPerFile() > 0) && (int(last_pulse_num_written / chirp.getMaxChirpsPerFile()) > save_file_index)) {
-      outfile.close();
-      // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
-      cout_mutex.lock();
-      cout << "[CLOSE FILE] " << current_filename << endl;
-      cout_mutex.unlock();
-
-      save_file_index++;
-      current_filename = save_loc + "." + to_string(save_file_index);
-
-      // Note: This print statement is used by automated post-processing code. Please be careful about changing the format.
-      cout_mutex.lock();
-      cout << "[OPEN FILE] " << current_filename << endl;
-      cout_mutex.unlock();
-      outfile.open(current_filename, ofstream::binary);
-    }
+    // split output files based on number of chirps
+    splitOutputFiles(chirp, outfile, current_filename, save_file_index);
     
     // // clear the matrices holding the sums
     // fill(sample_sum.begin(), sample_sum.end(), complex<int16_t>(0,0));
   }
 
   /*** WRAP UP ***/
-
-  cout << "[RX] Closing output file." << endl;
-  outfile.close();
-  cout << "[CLOSE FILE] " << current_filename << endl;
-
-  gps_stream.close();
-
-  cout << "[RX] Error count: " << error_count << endl;
-  cout << "[RX] Total pulses written: " << last_pulse_num_written << endl;
-  cout << "[RX] Total pulses attempted: " << pulses_received << endl;
-  
-  cout << "[RX] Done. Calling join_all() on transmit thread group." << endl;
-
-  transmit_thread.join_all();
-
-  cout << "[RX] transmit_thread.join_all() complete." << endl << endl;
+  wrapUp(gps_stream, outfile, current_filename, transmit_thread);
 
   return EXIT_SUCCESS;
   
