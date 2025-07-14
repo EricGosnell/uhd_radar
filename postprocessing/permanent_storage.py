@@ -7,7 +7,7 @@ import argparse
 # Function to move timestamped files from source directory to destination directory
 # Usage: To transfer to external storage, group specific timestamps together
 # Dont know if binary or processed yet
-## Example: python move_timestamped_files.py 20231001_120000 data permanent_storage
+## Example: python move_timestamped_files.py 20231001_120000 -- source_dir data --dest_dir permanent_storage
 # Arg1: timestamp in format YYYYMMDD_HHMMSS
 # Arg2: source directory containing files to move (default: data)
 # Arg3: destination directory for permanent storage
