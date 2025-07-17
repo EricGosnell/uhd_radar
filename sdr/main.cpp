@@ -8,6 +8,7 @@ void sig_int_handler(int) {
   stop_signal_called = true;
 }
 
+
 /*** CONFIGURATION PARAMETERS ***/
 
 // FILENAMES
