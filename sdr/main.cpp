@@ -322,6 +322,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   float inversion_phase; // Store phase to use for phase inversion of this chirp
 
   //Creating GPS log & vars
+  printf("Starting GPS code...\n");
+  using namespace boost::asio;
+
+  io_service io;
+  serial_port serial(io);
+
   printf("Opening serial port...\n");
   serial.open("/dev/ttyACM0");  // Adjust if needed for your system
   printf("Serial port opened.\n");

@@ -20,7 +20,7 @@ int main() {
         printf("Serial port opened.\n");
         serial.set_option(serial_port_base::baud_rate(115200));
 
-        ofstream gps_output("gps_log.txt");
+        std::ofstream gps_output("gps_log.txt");
 
         std::string line;
         char c;
