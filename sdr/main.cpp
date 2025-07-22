@@ -179,6 +179,57 @@ void wrapUp(boost::asio::posix::stream_descriptor& gps_stream, ofstream& outfile
   cout << "[RX] transmit_thread.join_all() complete." << endl << endl;
 }
 
+/*void gpsData() {
+  read(serial, buffer(&c, 1));
+  if (c == '\n') {
+      if (line.find("$GNGGA") == 0) {
+          // Timestamp when line is complete
+          auto now = std::chrono::system_clock::now();
+          auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                            now.time_since_epoch()).count();
+
+          std::stringstream ss(line);
+          std::string field;
+          std::vector<std::string> fields;
+
+          while (std::getline(ss, field, ',')) {
+              fields.push_back(field);
+          }
+
+          if (fields.size() >= 10) {
+              auto convertToDecimal = [](const std::string& nmeaCoord, const std::string& dir) {
+                  if (nmeaCoord.empty()) return 0.0;
+                  double raw = std::stod(nmeaCoord);
+                  int degrees = static_cast<int>(raw / 100);
+                  double minutes = raw - (degrees * 100);
+                  double decimal = degrees + minutes / 60.0;
+                  if (dir == "S" || dir == "W") decimal = -decimal;
+                  return decimal;
+              };
+
+              double latitude = convertToDecimal(fields[2], fields[3]);
+              double longitude = convertToDecimal(fields[4], fields[5]);
+              double altitude = std::stod(fields[9]);
+
+              if (gps_output.is_open()) {
+                  gps_output << now_us << " " << latitude << " " << longitude << " " << altitude << std::endl;
+              }
+
+              //FOR READABILITY ONLY!!! Remove for actual use
+              std::cout << std::fixed << std::setprecision(10);
+              std::cout << "Timestamp: " << now_us << " us, ";
+              std::cout << "Lat: " << latitude
+                        << ", Lon: " << longitude
+                        << ", Alt: " << altitude << " m\n";
+          }
+      }
+      line.clear();
+  } else if (c != '\r') {
+      line += c;
+  }
+}*/
+
+
 /* 
  * UHD_SAFE_MAIN
  */
@@ -322,7 +373,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   float inversion_phase; // Store phase to use for phase inversion of this chirp
 
   //Creating GPS log & vars
-  bool use_gps = true; // Use GPS for logging
   printf("Starting GPS code...\n");
   using namespace boost::asio;
 
@@ -353,7 +403,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
 
     // Our GPS method (below commented GPS from old version)
-    if (((pulses_received % 50000) == 0) && (use_gps)) {
+    if (((pulses_received % 50000) == 0) && (sdr.getClkRef() == "gpsdo")) {
       read(serial, buffer(&c, 1));
       if (c == '\n') {
           if (line.find("$GNGGA") == 0) {
