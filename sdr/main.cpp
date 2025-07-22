@@ -322,6 +322,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   float inversion_phase; // Store phase to use for phase inversion of this chirp
 
   //Creating GPS log & vars
+  bool use_gps = true; // Use GPS for logging
   printf("Starting GPS code...\n");
   using namespace boost::asio;
 
@@ -352,7 +353,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
 
     // Our GPS method (below commented GPS from old version)
-    if ((pulses_received % 100000) == 0) {
+    if (((pulses_received % 50000) == 0) && (use_gps)) {
       read(serial, buffer(&c, 1));
       if (c == '\n') {
           if (line.find("$GNGGA") == 0) {
