@@ -8,7 +8,7 @@
 #include <boost/asio.hpp>
 
 int main() {
-    printf("Starting GPS test code...\n");
+    printf("Starting GPS code...\n");
     using namespace boost::asio;
 
     io_service io;
@@ -60,7 +60,7 @@ int main() {
                         double altitude = std::stod(fields[9]);
 
                         if (gps_output.is_open()) {
-                            gps_output << now_us << latitude << longitude << altitude << std::endl;
+                            gps_output << now_us << "," << latitude << "," << longitude << "," << altitude << std::endl;
                         }
 
                         //FOR READABILITY ONLY!!! Remove for actual use
