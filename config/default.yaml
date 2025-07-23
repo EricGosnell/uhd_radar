@@ -156,8 +156,8 @@ ENVIRONMENTAL_FACTORS:  #these are the factors that affect the power equation th
 
     tilt_of_plane: 0 #theta, user input, where is it used?
 
-    reference_power: #user input based on calibration
+    reference_power: 100 #user input based on calibration
 
-    power_loss: #user input based on calibration
+    power_loss: 35 #user input based on calibration
 
     max_rx_gain: 76

@@ -4,8 +4,13 @@ import numpy as np
 import scipy.signal as sp
 import processing as pr
 import matplotlib.pyplot as plt
-from run import *
 from ruamel.yaml import YAML as ym
+
+import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+filepath = os.path.join(current_dir, '../', 'run.py')
+with open(filepath) as f:
+   run = f.read()
 
 c = 3e8
 pi = 3.14
@@ -30,10 +35,10 @@ with open(args.yaml_file) as stream:
    #TODO: use gps data to calculate radius(altitude) for geometric spreading
    radius = 100 # should be changed later, this is control data
    wavelength = (c/freq)
-   geometric_spreading = ((wavelength)/(4*pi*radius))^2
+   geometric_spreading = ((wavelength)/(4*pi*radius))**2
    scattering_max = factors["scattering_max"]
    scattering_current = factors["scattering_current"]
-   specular_reflection_coeff_max = factors["specular_reflection_coeff"]
+   specular_reflection_coeff_max = factors["specular_reflection_coeff_max"]
    specular_reflection_coeff_current = factors["specular_reflection_coeff_current"]
    antenna_gain = factors["antenna_gain"]
    tilt_of_plane = factors["tilt_of_plane"]
@@ -80,7 +85,7 @@ while(bool):
 
    print("New gain is", dB_gain, "dB. Are you satisfied with this new gain? 'yes' or 'no'")
    user_ans = input().lower()
-   if(user_ans = 'yes'):
+   if(user_ans == 'yes'):
       bool = False
    else:
       print("Recalculating rx gain")
