@@ -15,10 +15,9 @@
 
 **freq** = read from default.yaml
 
+*parameters for above equations are specified below*
 
-*parameters for above equations are specified beloware specified below*
-
-## default.yaml  user input parameters(b205 mini specific)
+## default.yaml  user input parameters (b205 mini)
  **scattering_current:** default is set to `0.5` as the assumed value, but user should change this if needed
 
  **specular_reflection_coeff_current:** default is set to `0.5` as the assumed value in `s-pol`, but user should change this if needed
@@ -35,3 +34,5 @@
 **dB Power** = `10log10(linear_power)` - *That is 10 x log base 10 (linear_power)*
 
 **dB Voltage** = `20log10(linear_voltage)` - *That is 20 x log base 10 (linear_voltage)*
+
+*All of these concepts(linear->dB, radar power equation) are also used in reflectivity_maps.py*

@@ -4,7 +4,7 @@ import numpy as np
 import scipy.signal as sp
 import processing as pr
 import matplotlib.pyplot as plt
-import generate_chirp as gen 
+from run import *
 from ruamel.yaml import YAML as ym
 
 c = 3e8
@@ -42,11 +42,22 @@ with open(args.yaml_file) as stream:
    power_loss = factors["power_loss"]
    transmit_power = reference_power + tx_gain - power_loss #measurements in .yaml file
 
+   
+runner = RadarProcessRunner(yaml_filename)
+def sigint_handler(signum, frame):
+   runner.stop() # On Ctrl-C, attempt to stop radar process
+
+
 print("Config factors and parameters being uploaded...")
 
 bool = True
 while(bool):
-   gen.generate_chirp(config) #generates the chirp that the data is taken from
+   runner.setup()
+   runner.run()
+   signal.signal(signal.SIGINT, sigint_handler)
+   runner.wait()
+   runner.stop() #generates the chirp that the data is taken from
+
    rx_sig = pr.loadSamplesFromFile(args.rx_samps_file, config)
    max_rx_volts = np.max(rx_sig)
    max_rx_samp_power = ((max_rx_volts)^2)/50 #R is 50 ohms
@@ -63,7 +74,6 @@ while(bool):
    if(dB_gain > max_rx_gain): #76 dB is the max availabe rx gain for b205 mini
       raise ValueError("Calculated rx gain is too high for b205 mini")
    #catch error?
-
 
    #generate graphs using new gain based on scales power
    #output graphs and new rx_gain
