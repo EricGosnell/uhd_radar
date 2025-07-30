@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <chrono>
 #include <boost/asio.hpp>
+#include <thread>
 
 #include "yaml-cpp/yaml.h"
 #include "rf_settings.hpp"
@@ -41,3 +42,6 @@ void handleRxBuffer(size_t n_samps_in_rx_buff, rx_metadata_t& rx_md, Chirp& chir
 bool checkForFullSampleSum(Chirp& chirp, vector<complex<float>>& sample_sum, ofstream& outfile);
 void splitOutputFiles(Chirp& chirp, ofstream& outfile, string& current_filename, int& save_file_index);
 void wrapUp(boost::asio::posix::stream_descriptor& gps_stream, ofstream& outfile, string& current_filename, boost::thread_group& transmit_thread);
+void sendUBX(boost::asio::serial_port& serial, const std::vector<uint8_t>& msg);
+void configureRate(boost::asio::serial_port& serial, int hz);
+void configureNMEAMessages(boost::asio::serial_port& serial, uint8_t ggaRate);
