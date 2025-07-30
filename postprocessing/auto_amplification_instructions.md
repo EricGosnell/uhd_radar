@@ -24,9 +24,9 @@
 
  **antenna_gain:** default is set to `6 dB`, but user should change if needed
 
- **reference_power:** default is set to `___ dB` as control data, but reference_power should be calibrated using........
+ **reference_power:** default is set to `-66 dBm` as control data, but reference_power should be determined by type of equiptment used and running inital tests for the best reference power estimate.
 
- **power_loss:** default is set to `___ dB` as control data, but power_loss should be calibrated using .......
+ **power_loss:** default is set to `35 dB` as control data, but power_loss should be determined by the type of wires, the surface being reflected off, and whether attenuators are being used or not. 
 
 
 ## How to convert from linear units to dB
@@ -36,3 +36,9 @@
 **dB Voltage** = `20log10(linear_voltage)` - *That is 20 x log base 10 (linear_voltage)*
 
 *All of these concepts(linear->dB, radar power equation) are also used in reflectivity_maps.py*
+
+## How to run the code
+
+run `python postprocessing/auto_amplification.py <time_stamp>_config.yaml <time_stamp>_rx_samps.bin` to run the auto_amplification file. Make sure that the code is being run in the uhd_radar folder.
+
+If you get an error that says `No module named 'postprocessing'`, run `PYTHONPATH=. python postprocessing/auto_amplification.py <time_stamp>_config.yaml <time_stamp>_rx_samps.bin` instead.
