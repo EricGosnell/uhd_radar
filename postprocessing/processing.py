@@ -159,6 +159,16 @@ def loadSamplesFromFile(filename, config, reshape=True, max_chunk_size=int(5e8),
 
     return rx_sig
 
+# Load and parse GPS data from a file
+# this function assumes the file is a CSV with columns: 'Time','Latitude', Longitude','Altitude'
+# returns four numpy arrays: time, latitude, longitude, altitude
+def loadGPSData(filename):
+    time = np.genfromtxt(filename, delimiter=',', usecols=0, dtype=float)
+    lat = np.genfromtxt(filename, delimiter=',', usecols=1, dtype=float)
+    lon = np.genfromtxt(filename, delimiter=',', usecols=2, dtype=float)
+    alt = np.genfromtxt(filename, delimiter=',', usecols=3, dtype=float)
+    return time, lat, lon, alt
+
 def stack(radar_data, n):
     radar_data_stacked = np.zeros_like(radar_data, shape=(np.shape(radar_data)[0], np.shape(radar_data)[1]//n))
     for out_idx, start_idx in enumerate(np.arange(0, np.shape(radar_data_stacked)[1]*n, n)):

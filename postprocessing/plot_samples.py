@@ -8,7 +8,7 @@ from ruamel.yaml import YAML as ym
 
 # Check if a YAML file was provided as a command line argument
 parser = argparse.ArgumentParser()
-parser.add_argument("yaml_file", nargs='?', default='config/default.yaml',
+parser.add_argument("yaml_file", nargs='?', default='config/default.yaml', #may need to navigate out and to config
         help='Path to YAML configuration file')
 args = parser.parse_args()
 
