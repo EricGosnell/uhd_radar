@@ -18,7 +18,12 @@ def save_data(yaml_filename, extra_files={}, alternative_rx_samps_loc=None, num_
 
     print(f"Copying data to {file_prefix}...")
 
-    shutil.copy(yaml_filename, file_prefix + "_config.yaml")
+    #shutil.copy(yaml_filename, file_prefix + "_config.yaml")
+    new_config_filename = file_prefix + "_config.yaml"
+    config['PLOT']['rx_samps'] = file_prefix + "_rx_samps.bin" #Update config to point to new location of rx_samps.bin
+    with open(new_config_filename, 'w') as f:
+        yaml.dump(config, f)
+
     if config['FILES']['max_chirps_per_file'] == -1:
             
             shutil.move(config['FILES']['save_loc'], file_prefix + "_rx_samps.bin")

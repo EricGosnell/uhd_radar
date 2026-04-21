@@ -25,7 +25,10 @@ with open(args.yaml_file) as stream:
    direct_start = rx_params["direct_start"]
    echo_start = rx_params["echo_start"]
    sig_speed = rx_params["sig_speed"]
-   
+   numSamps = rx_params["num_samps"]
+   preSamps = rx_params["pre_samps"]
+   offsetSamps = rx_params["offset_samps"]
+
 print("--- Loaded constants from config.yaml ---")
 
 # Read and plot RX/TX
@@ -59,7 +62,7 @@ xcorr_samps = np.shape(xcorr_sig)[0]
 print(echo_start)
 xcorr_time = np.zeros(xcorr_samps)
 for x in range (xcorr_samps):
-    xcorr_time[x] = x * 1e6 /sample_rate
+    xcorr_time[x] = x * 1e6 / sample_rate
 
 # plt.figure()
 # plt.plot(xcorr_time, xcorr_sig)
@@ -69,14 +72,26 @@ for x in range (xcorr_samps):
 # plt.grid()
 
 #COLIN TEST CODE----------
-numSamps = 2000
-xTime = np.arange(-10,numSamps) * 1e6 / sample_rate
-    
+distPerSample = sig_speed / sample_rate
+samples = np.arange(numSamps + preSamps)
+xDist = (samples-preSamps) * distPerSample
+
+start = offsetSamps + 5
+exclude0Peak = np.argmax(xcorr_sig[start : offsetSamps + numSamps]) + start
+localPeak = exclude0Peak - (offsetSamps - preSamps)
+
+print("\tThe direct path peak was found at distance %f with value %f." % (xDist[localPeak], np.abs(xcorr_sig[exclude0Peak])))
+
 plt.figure()
-plt.plot(xTime, xcorr_sig[dir_peak-10:dir_peak+numSamps])
+plt.plot(xDist, xcorr_sig[offsetSamps - preSamps : offsetSamps + numSamps])
 plt.title("Output of Match Filter: Peaks")
-plt.xlabel('Time (us)')
+plt.xlabel('Distance (m)')
 plt.ylabel('Power [dB]')
+plt.plot(xDist[localPeak],xcorr_sig[offsetSamps - preSamps + localPeak])
+plt.text(0.95, 0.95,
+         f"Peak distance: {xDist[localPeak]:.2f} m",
+         transform=plt.gca().transAxes,
+         ha='right', va='top')
 plt.grid()
 #-------------------
 
